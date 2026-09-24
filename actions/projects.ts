@@ -1,17 +1,21 @@
 'use server'
 
 /**
- * Módulo Agenda → Projetos (issue #14) — CRUD de projetos/grupos.
+ * Módulo Agenda → Projetos (issues #14/#17) — CRUD de projetos/grupos.
  * Projeto é só uma camada de organização sobre Tasks: progresso e contagens
  * são sempre calculados a partir de tasks.project_id, nunca preenchidos à
- * mão. Ver supabase/migrations/0260_projetos.sql e 0267 (generalização —
- * client_id passou a ser opcional, projeto pode ser de uso interno).
+ * mão. Ver supabase/migrations/0260_projetos.sql, 0272 (generalização —
+ * client_id opcional) e 0273 (etapas configuráveis via column_id, tags,
+ * timeline — issue #17). `status` continua na tabela só como legado/
+ * histórico; column_id é a fonte de verdade do Kanban desde a #17.
  */
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { projectSchema, projectGroupSchema, type ProjectInput } from '@/lib/validators/project'
+import { ensureDefaultProjectColumnId } from './project-columns'
+import { logProjectActivity } from './project-activities'
 import { revalidatePath } from 'next/cache'
 
 export type ProjectRow = {
@@ -22,6 +26,8 @@ export type ProjectRow = {
   objective: string | null
   owner_id: string | null
   status: 'a_fazer' | 'em_andamento' | 'concluido'
+  column_id: string | null
+  tags: string[]
   health: 'normal' | 'atencao' | 'bloqueado' | 'aguardando_cliente' | 'em_risco'
   start_date: string | null
   due_date: string | null
@@ -30,6 +36,7 @@ export type ProjectRow = {
   created_at: string
   client?: { id: string; name: string } | null
   owner?: { id: string; name: string | null; email: string | null } | null
+  column?: { id: string; name: string; is_done: boolean } | null
   tasksTotal: number
   tasksDone: number
   tasksOverdue: number
@@ -58,9 +65,12 @@ async function attachTaskCounts(supabase: ReturnType<typeof createClient>, orgId
 
   return projects.map(p => {
     const c = counts.get(p.id) ?? { total: 0, done: 0, overdue: 0 }
-    return { ...p, tasksTotal: c.total, tasksDone: c.done, tasksOverdue: c.overdue }
+    const column = Array.isArray(p.column) ? (p.column[0] ?? null) : (p.column ?? null)
+    return { ...p, column, tasksTotal: c.total, tasksDone: c.done, tasksOverdue: c.overdue }
   })
 }
+
+const PROJECT_SELECT = '*, client:client_id(id, name), column:column_id(id, name, is_done)'
 
 export async function listProjects(orgSlug: string, opts: { clientId?: string; archived?: boolean } = {}): Promise<ProjectRow[]> {
   const org = await getCurrentOrganization(orgSlug)
@@ -68,7 +78,7 @@ export async function listProjects(orgSlug: string, opts: { clientId?: string; a
 
   let query = supabase
     .from('projetos')
-    .select('*, client:client_id(id, name)')
+    .select(PROJECT_SELECT)
     .eq('organization_id', org.id)
 
   query = opts.archived ? query.not('archived_at', 'is', null) : query.is('archived_at', null)
@@ -85,7 +95,7 @@ export async function getProject(orgSlug: string, projectId: string) {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('projetos')
-    .select('*, client:client_id(id, name)')
+    .select(PROJECT_SELECT)
     .eq('id', projectId)
     .eq('organization_id', org.id)
     .maybeSingle()
@@ -118,6 +128,8 @@ export async function createProject(orgSlug: string, input: ProjectInput) {
   if (!validation.success) return { ok: false as const, error: validation.error.issues[0].message }
   const v = validation.data
 
+  const columnId = v.column_id || await ensureDefaultProjectColumnId(supabase, org.id)
+
   const { data, error } = await supabase.from('projetos').insert({
     organization_id: org.id,
     client_id: v.client_id || null,
@@ -125,7 +137,8 @@ export async function createProject(orgSlug: string, input: ProjectInput) {
     description: v.description || null,
     objective: v.objective || null,
     owner_id: v.owner_id || user.id,
-    status: v.status || 'a_fazer',
+    column_id: columnId,
+    tags: v.tags || [],
     health: v.health || 'normal',
     start_date: v.start_date || null,
     due_date: v.due_date || null,
@@ -133,6 +146,7 @@ export async function createProject(orgSlug: string, input: ProjectInput) {
   }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
+  await logProjectActivity(supabase, { organizationId: org.id, projectId: data.id, type: 'created', payload: { name: v.name }, userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   if (v.client_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${v.client_id}`)
   return { ok: true as const, id: data.id as string }
@@ -151,24 +165,49 @@ export async function updateProject(orgSlug: string, projectId: string, input: P
   if (input.description !== undefined) updates.description = input.description || null
   if (input.objective !== undefined) updates.objective = input.objective || null
   if (input.owner_id !== undefined) updates.owner_id = input.owner_id || null
-  if (input.status !== undefined) updates.status = input.status
   if (input.health !== undefined) updates.health = input.health
   if (input.start_date !== undefined) updates.start_date = input.start_date || null
   if (input.due_date !== undefined) updates.due_date = input.due_date || null
-  if (input.status === 'concluido') updates.completed_at = new Date().toISOString()
-  if (input.status && input.status !== 'concluido') updates.completed_at = null
+  if (input.tags !== undefined) updates.tags = input.tags || []
+
+  if (Object.keys(updates).length === 0) return { ok: true as const }
 
   const { error } = await supabase.from('projetos').update(updates).eq('id', projectId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
+  await logProjectActivity(supabase, { organizationId: org.id, projectId, type: 'updated', payload: { fields: Object.keys(updates) }, userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   revalidatePath(`/app/${orgSlug}/agenda/projetos/${projectId}`)
   return { ok: true as const }
 }
 
-/** Kanban drag & drop — só o status muda. */
-export async function setProjectStatus(orgSlug: string, projectId: string, status: 'a_fazer' | 'em_andamento' | 'concluido') {
-  return updateProject(orgSlug, projectId, { status })
+/** Kanban drag & drop — move o projeto pra outra etapa (project_columns).
+ *  completed_at segue column.is_done — nunca é setado por percentual, só por
+ *  essa movimentação manual (ou explícita via update_projetos da IA). */
+export async function setProjectColumn(orgSlug: string, projectId: string, columnId: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
+  const supabase = createClient()
+
+  const { data: column, error: colErr } = await supabase
+    .from('project_columns')
+    .select('id, name, is_done')
+    .eq('id', columnId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (colErr || !column) return { ok: false as const, error: 'Etapa não encontrada.' }
+
+  const { error } = await supabase.from('projetos')
+    .update({ column_id: columnId, completed_at: column.is_done ? new Date().toISOString() : null })
+    .eq('id', projectId).eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+
+  await logProjectActivity(supabase, { organizationId: org.id, projectId, type: 'column_changed', payload: { to: column.name, isDone: column.is_done }, userId: user.id })
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos/${projectId}`)
+  return { ok: true as const }
 }
 
 export async function archiveProject(orgSlug: string, projectId: string, archived: boolean) {
@@ -181,6 +220,7 @@ export async function archiveProject(orgSlug: string, projectId: string, archive
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq('id', projectId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
+  await logProjectActivity(supabase, { organizationId: org.id, projectId, type: archived ? 'archived' : 'unarchived', userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }
@@ -218,6 +258,7 @@ export async function createProjectGroup(orgSlug: string, projectId: string, nam
   }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
+  await logProjectActivity(supabase, { organizationId: org.id, projectId, type: 'group_created', payload: { name: validation.data.name }, userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos/${projectId}`)
   return { ok: true as const, id: data.id as string }
 }
@@ -228,8 +269,9 @@ export async function renameProjectGroup(orgSlug: string, groupId: string, name:
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
-  const { error } = await supabase.from('projeto_grupos').update({ name }).eq('id', groupId).eq('organization_id', org.id)
+  const { data: group, error } = await supabase.from('projeto_grupos').update({ name }).eq('id', groupId).eq('organization_id', org.id).select('project_id').single()
   if (error) return { ok: false as const, error: error.message }
+  if (group) await logProjectActivity(supabase, { organizationId: org.id, projectId: group.project_id, type: 'group_renamed', payload: { name }, userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }
@@ -240,9 +282,11 @@ export async function deleteProjectGroup(orgSlug: string, groupId: string) {
   const check = await checkMemberPermission(org.id, user.id, 'projects')
   if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
+  const { data: group } = await supabase.from('projeto_grupos').select('project_id, name').eq('id', groupId).eq('organization_id', org.id).maybeSingle()
   // Tasks do grupo não são apagadas — só voltam a ficar sem grupo (ON DELETE SET NULL).
   const { error } = await supabase.from('projeto_grupos').delete().eq('id', groupId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
+  if (group) await logProjectActivity(supabase, { organizationId: org.id, projectId: group.project_id, type: 'group_deleted', payload: { name: group.name }, userId: user.id })
   revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }

@@ -16,18 +16,17 @@ function fmtDate(d: string | null): string {
 interface Props {
   orgSlug: string
   project: ProjectRow
-  draggable?: boolean
-  onDragStart?: (e: React.DragEvent) => void
 }
 
-export default function ProjectCard({ orgSlug, project, draggable, onDragStart }: Props) {
+export default function ProjectCard({ orgSlug, project }: Props) {
   const pct = project.tasksTotal > 0 ? Math.round((project.tasksDone / project.tasksTotal) * 100) : 0
+  const tags = project.tags || []
+  const visibleTags = tags.slice(0, 2)
+  const extraTags = tags.length - visibleTags.length
 
   return (
     <Link
       href={`/app/${orgSlug}/agenda/projetos/${project.id}`}
-      draggable={draggable}
-      onDragStart={onDragStart}
       className="block rounded-lg border bg-card p-3 hover:border-primary/50 transition-colors cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2">
@@ -61,6 +60,15 @@ export default function ProjectCard({ orgSlug, project, draggable, onDragStart }
         )}
         {project.due_date && <span className="text-[10px] text-muted-foreground ml-auto">até {fmtDate(project.due_date)}</span>}
       </div>
+
+      {visibleTags.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {visibleTags.map(tag => (
+            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-secondary-foreground">{tag}</span>
+          ))}
+          {extraTags > 0 && <span className="text-[10px] text-muted-foreground">+{extraTags}</span>}
+        </div>
+      )}
     </Link>
   )
 }

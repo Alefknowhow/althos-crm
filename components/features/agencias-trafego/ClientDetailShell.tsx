@@ -22,6 +22,8 @@ import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBu
 import MarketingStrategistDock from '@/components/features/agencias-trafego/MarketingStrategistDock'
 import ProjectsView from '@/components/features/agenda/projetos/ProjectsView'
 import type { ProjectRow } from '@/actions/projects'
+import type { ProjectColumn } from '@/actions/project-columns'
+import type { ProjectTemplateRow } from '@/actions/project-templates'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
@@ -59,7 +61,7 @@ export default function ClientDetailShell({
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
-  mediaPlans, mediaPlanItems, projects, members,
+  mediaPlans, mediaPlanItems, projects, projectColumns, projectTemplates, members,
 }: {
   orgSlug: string
   clientId: string
@@ -88,6 +90,8 @@ export default function ClientDetailShell({
   trackingLinks: TrackingLink[]
   trackingLinkPerformance: LinkPerformance[]
   projects: ProjectRow[]
+  projectColumns: ProjectColumn[]
+  projectTemplates: ProjectTemplateRow[]
   members: { user_id: string; name: string }[]
 }) {
   const router = useRouter()
@@ -210,6 +214,8 @@ export default function ClientDetailShell({
           <ProjectsView
             orgSlug={orgSlug}
             projects={projects}
+            columns={projectColumns}
+            templates={projectTemplates}
             clients={[{ id: clientId, name: clientName }]}
             members={members}
             hideClientFilter

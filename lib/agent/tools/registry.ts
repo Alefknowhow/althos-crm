@@ -18,6 +18,11 @@ import { CRM_MODULES } from '@/lib/agent/tools/modules-crm'
 import { VIAGENS_MODULES } from '@/lib/agent/tools/modules-viagens'
 import { CLINICAS_IMOVEIS_MODULES } from '@/lib/agent/tools/modules-clinicas-imoveis'
 import { SEGUROS_TRAFEGO_MODULES } from '@/lib/agent/tools/modules-seguros-trafego'
+import { AGENDA_MODULES } from '@/lib/agent/tools/modules-agenda'
+import {
+  listProjectTemplatesTool, listProjectTemplatesShape,
+  applyProjectTemplateTool, applyProjectTemplateShape,
+} from '@/lib/agent/tools/project-templates'
 
 /**
  * Etapa 3/4 (Agent Layer) — Tool Registry. Cada entrada pareia o ToolDef
@@ -43,6 +48,8 @@ export const TOOL_REGISTRY: { tool: ToolDef<any>; inputShape: Record<string, any
   { tool: getCampaignPerformanceTool, inputShape: getCampaignPerformanceShape },
   { tool: getTasksTool, inputShape: getTasksShape },
   { tool: createTaskTool, inputShape: createTaskShape },
-  ...[...CRM_MODULES, ...VIAGENS_MODULES, ...CLINICAS_IMOVEIS_MODULES, ...SEGUROS_TRAFEGO_MODULES]
+  { tool: listProjectTemplatesTool, inputShape: listProjectTemplatesShape },
+  { tool: applyProjectTemplateTool, inputShape: applyProjectTemplateShape },
+  ...[...CRM_MODULES, ...VIAGENS_MODULES, ...CLINICAS_IMOVEIS_MODULES, ...SEGUROS_TRAFEGO_MODULES, ...AGENDA_MODULES]
     .flatMap(buildModuleTools),
 ]

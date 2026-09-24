@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PROJECT_HEALTH_LABEL, PROJECT_STATUS_LABEL } from '@/lib/validators/project'
+import { PROJECT_HEALTH_LABEL } from '@/lib/validators/project'
 import { PROJECT_HEALTH_BADGE_CLASS } from '@/lib/trafego/project-status'
 import type { ProjectRow } from '@/actions/projects'
 
@@ -29,7 +29,7 @@ export default function ProjectsList({ orgSlug, projects }: { orgSlug: string; p
             <TableHead>Progresso</TableHead>
             <TableHead>Prazo</TableHead>
             <TableHead>Saúde</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Etapa</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -56,7 +56,7 @@ export default function ProjectsList({ orgSlug, projects }: { orgSlug: string; p
                     {PROJECT_HEALTH_LABEL[p.health]}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{PROJECT_STATUS_LABEL[p.status]}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{p.column?.name || '—'}</TableCell>
               </TableRow>
             )
           })}
