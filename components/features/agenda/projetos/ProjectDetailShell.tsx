@@ -24,9 +24,9 @@ import { PROJECT_HEALTH_BADGE_CLASS } from '@/lib/trafego/project-status'
 import type { ProjectRow } from '@/actions/projects'
 import type { ProjectColumn } from '@/actions/project-columns'
 import type { ProjectActivity } from '@/actions/project-activities'
+import type { Task } from '@/components/features/tasks/TasksBoardShared'
 
 type Group = { id: string; name: string; position: number }
-type Task = { id: string; title: string; status: string; priority: string; due_date: string | null; project_group_id: string | null }
 type Member = { user_id: string; name: string; email: string }
 
 function fmtDate(d: string | null): string {
@@ -234,7 +234,7 @@ export default function ProjectDetailShell({
               members={members}
             />
           ) : (
-            <ProjectTasksKanban orgSlug={orgSlug} tasks={tasks as any} groups={groups} />
+            <ProjectTasksKanban orgSlug={orgSlug} tasks={tasks as any} groups={groups} members={members} />
           )}
         </TabsContent>
 

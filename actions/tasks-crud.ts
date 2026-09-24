@@ -124,14 +124,19 @@ export async function listTasksForContato(orgSlug: string, contatoId: string) {
   return data ?? []
 }
 
-/** Tarefas vinculadas a um projeto (módulo Projetos, Agências de Tráfego) —
- *  é a MESMA task do módulo global de Tasks, só filtrada por project_id. */
+/** Tarefas vinculadas a um projeto (módulo Agenda → Projetos) — é a MESMA
+ *  task do módulo global de Tarefas, só filtrada por project_id. Alias
+ *  `leads` (não `contatos`) de propósito: é o nome que TasksBoardShared/
+ *  EditSheet esperam pra reconhecer o vínculo com contato — usar outro
+ *  nome aqui faria o "Relacionado a" abrir vazio e o Salvar apagar o
+ *  contato_id existente (achado ao reaproveitar o EditSheet de Tarefas
+ *  dentro de Projetos, issue #17). */
 export async function listTasksForProject(orgSlug: string, projectId: string) {
   const org = await getCurrentOrganization(orgSlug)
   const supabase = createClient()
   const { data, error } = await supabase
     .from('tasks')
-    .select('*, contatos:contato_id(id, name)')
+    .select('*, leads:contatos(id, name)')
     .eq('organization_id', org.id)
     .eq('project_id', projectId)
     .order('due_date', { ascending: true, nullsFirst: false })

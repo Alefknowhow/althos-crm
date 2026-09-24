@@ -30,6 +30,10 @@ export type Task = {
   assigned_to?: string | null
   assignee_name?: string | null
   column_id?: string | null
+  /** Vínculo com Agenda → Projetos (issue #14/#17) — mesma task, só
+   *  agrupada por projeto/etapa quando presente. */
+  project_id?: string | null
+  project_group_id?: string | null
   sale_id?: string | null
   related_entity_type?: string | null
   related_entity_id?: string | null
