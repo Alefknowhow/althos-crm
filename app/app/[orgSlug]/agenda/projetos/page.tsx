@@ -3,15 +3,17 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { listProjects } from '@/actions/projects'
+import { listProjectColumns } from '@/actions/project-columns'
+import { listProjectTemplates } from '@/actions/project-templates'
 import { listOrgMembers } from '@/actions/team'
 import { PageHeader } from '@/components/ui/page-header'
 import ProjectsView from '@/components/features/agenda/projetos/ProjectsView'
 
 export const dynamic = 'force-dynamic'
 
-// Agenda → Projetos (issue #14) — generalizado pra qualquer nicho, não
-// exclusivo mais de Agências de Tráfego (sem requireModuleEnabled aqui).
-// Gate por permissão aqui é obrigatório: esconder o link na sidebar não é
+// Agenda → Projetos (issues #14/#17) — generalizado pra qualquer nicho, com
+// etapas de Kanban configuráveis (sem requireModuleEnabled aqui). Gate por
+// permissão aqui é obrigatório: esconder o link na sidebar não é
 // autorização — acesso direto pela URL bypassava a checagem (achado da
 // revisão automática do PR #53).
 export default async function ProjetosPage({ params }: { params: { orgSlug: string } }) {
@@ -22,10 +24,12 @@ export default async function ProjetosPage({ params }: { params: { orgSlug: stri
 
   const supabase = createClient()
 
-  const [{ data: clients }, members, projects] = await Promise.all([
+  const [{ data: clients }, members, projects, columns, templates] = await Promise.all([
     supabase.from('contatos').select('id, name').eq('organization_id', org.id).eq('status', 'cliente').order('name'),
     listOrgMembers(params.orgSlug),
     listProjects(params.orgSlug),
+    listProjectColumns(params.orgSlug),
+    listProjectTemplates(params.orgSlug),
   ])
 
   const memberName = new Map(members.map((m: any) => [m.user_id, m.name]))
@@ -43,6 +47,8 @@ export default async function ProjetosPage({ params }: { params: { orgSlug: stri
       <ProjectsView
         orgSlug={params.orgSlug}
         projects={enriched as any}
+        columns={columns}
+        templates={templates}
         clients={(clients || []) as any}
         members={members as any}
       />

@@ -2,6 +2,8 @@ import { redirect, notFound } from 'next/navigation'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { getProject, listProjectGroups } from '@/actions/projects'
+import { listProjectColumns } from '@/actions/project-columns'
+import { listProjectActivities } from '@/actions/project-activities'
 import { listTasksForProject } from '@/actions/tasks'
 import { listOrgMembers } from '@/actions/team'
 import ProjectDetailShell from '@/components/features/agenda/projetos/ProjectDetailShell'
@@ -17,9 +19,11 @@ export default async function ProjetoDetailPage({ params }: { params: { orgSlug:
   const project = await getProject(params.orgSlug, params.id)
   if (!project) redirect(`/app/${params.orgSlug}/agenda/projetos`)
 
-  const [groups, tasks, members] = await Promise.all([
+  const [groups, tasks, columns, activities, members] = await Promise.all([
     listProjectGroups(params.orgSlug, params.id),
     listTasksForProject(params.orgSlug, params.id),
+    listProjectColumns(params.orgSlug),
+    listProjectActivities(params.orgSlug, params.id),
     listOrgMembers(params.orgSlug),
   ])
 
@@ -32,6 +36,8 @@ export default async function ProjetoDetailPage({ params }: { params: { orgSlug:
       project={{ ...(project as any), owner }}
       groups={groups as any}
       tasks={tasks as any}
+      columns={columns}
+      activities={activities}
       members={members as any}
     />
   )

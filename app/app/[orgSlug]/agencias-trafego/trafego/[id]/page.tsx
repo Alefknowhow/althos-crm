@@ -16,6 +16,8 @@ import ClientDetailShell from '@/components/features/agencias-trafego/ClientDeta
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
 import { requireModuleEnabled } from '@/lib/module-flags'
 import { listProjects } from '@/actions/projects'
+import { listProjectColumns } from '@/actions/project-columns'
+import { listProjectTemplates } from '@/actions/project-templates'
 import { listOrgMembers } from '@/actions/team'
 
 export const dynamic = 'force-dynamic'
@@ -89,8 +91,10 @@ export default async function TrafficClientDetailPage({
     ? (await getMediaPlanWithItems(params.orgSlug, mediaPlans[0].id))?.items || []
     : []
 
-  const [projects, members] = await Promise.all([
+  const [projects, projectColumns, projectTemplates, members] = await Promise.all([
     listProjects(params.orgSlug, { clientId: params.id }),
+    listProjectColumns(params.orgSlug),
+    listProjectTemplates(params.orgSlug),
     listOrgMembers(params.orgSlug),
   ])
   const memberName = new Map(members.map((m: any) => [m.user_id, m.name]))
@@ -153,6 +157,8 @@ export default async function TrafficClientDetailPage({
       mediaPlans={mediaPlans}
       mediaPlanItems={mediaPlanItems}
       projects={enrichedProjects as any}
+      projectColumns={projectColumns}
+      projectTemplates={projectTemplates}
       members={members as any}
     />
   )
