@@ -2,16 +2,21 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import {
   getMarketingOverview,
   listAdAccounts,
-  listCampaigns,
-  getMetaAdsLoginStatus,
-  getMarketingMetricsPrefs,
   type MarketingPeriod,
 } from '@/actions/marketing'
-import MarketingOverview from '@/components/features/marketing/MarketingOverview'
+import MarketingOverviewCrossChannel from '@/components/features/marketing/MarketingOverviewCrossChannel'
+import MarketingTabsNav from '@/components/features/marketing/MarketingTabsNav'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MarketingPage({
+/**
+ * Anúncios → Visão Geral (issue #24) — rota padrão do módulo, agora que
+ * "Anúncios" deixou de ser sinônimo de "painel Meta" (esse continua intacto
+ * em /marketing/meta-ads). Consolida TODAS as contas/plataformas da
+ * organização — getMarketingOverview já agrega por `campaigns`/`ad_accounts`
+ * sem filtro de provider, então não precisa de uma query própria.
+ */
+export default async function MarketingOverviewPage({
   params,
   searchParams,
 }: {
@@ -22,23 +27,20 @@ export default async function MarketingPage({
   await getCurrentOrganization(params.orgSlug)
   const period = (searchParams.period as MarketingPeriod) || '30d'
 
-  const [overview, accounts, campaigns, loginStatus, metricsPrefs] = await Promise.all([
+  const [overview, accounts] = await Promise.all([
     getMarketingOverview(params.orgSlug, period),
     listAdAccounts(params.orgSlug),
-    listCampaigns(params.orgSlug),
-    getMetaAdsLoginStatus(params.orgSlug),
-    getMarketingMetricsPrefs(params.orgSlug),
   ])
 
   return (
-    <MarketingOverview
-      orgSlug={params.orgSlug}
-      period={period}
-      overview={overview}
-      accounts={accounts as any[]}
-      campaigns={campaigns as any[]}
-      metaLoginUserName={loginStatus.userName}
-      initialMetricsPrefs={metricsPrefs}
-    />
+    <>
+      <MarketingTabsNav orgSlug={params.orgSlug} />
+      <MarketingOverviewCrossChannel
+        orgSlug={params.orgSlug}
+        period={period}
+        overview={overview}
+        accounts={accounts as any[]}
+      />
+    </>
   )
 }

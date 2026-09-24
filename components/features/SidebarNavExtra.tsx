@@ -2,6 +2,7 @@ import SidebarUnreadBadge from './SidebarUnreadBadge'
 import SidebarNavLink from './SidebarNavLink'
 import SidebarSupportLink from './SidebarSupportLink'
 import SidebarConfigAccordion from './SidebarConfigAccordion'
+import SidebarMarketingAccordion from './SidebarMarketingAccordion'
 import SidebarVoiceAccordion from './SidebarVoiceAccordion'
 import SidebarClientAccordion from './SidebarClientAccordion'
 import type { Permissions, MemberRole } from '@/lib/permissions'
@@ -9,7 +10,7 @@ import { canAccess } from '@/lib/permissions'
 import { isModuleEnabled } from '@/lib/niche-modules'
 import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
-  FileText, Package, Zap, Megaphone, Send, FileSignature,
+  FileText, Package, Zap, Send, FileSignature,
   Star, Building2, ShieldAlert, FileStack, MessageCircle, Headset,
   FolderKanban,
 } from 'lucide-react'
@@ -162,12 +163,7 @@ export async function SidebarNavExtra({
 
       {can('marketing') && (
         <div className="hidden md:block">
-          <SidebarNavLink href={`${base}/marketing`} exact dataTour="forms">
-            <span className="flex items-center gap-2.5">
-              <Megaphone className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Anúncios</span>
-            </span>
-          </SidebarNavLink>
+          <SidebarMarketingAccordion base={base} />
         </div>
       )}
 

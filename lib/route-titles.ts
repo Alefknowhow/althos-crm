@@ -81,7 +81,7 @@ export function getPageTitle(pathname: string, orgSlug: string): string {
 
 /** Sub-seções de /configuracoes — fonte única usada pelo acordeão da sidebar
  *  (SidebarConfigAccordion), pelo dropdown mobile (SettingsTabsNav) e pelo
- *  breadcrumb do topo da sidebar (SidebarRouteBreadcrumb). */
+ *  título do módulo no header (HeaderModuleTitle, via getSubLabel). */
 export const CONFIG_SUB_ITEMS = [
   { seg: '',             label: 'Geral' },
   { seg: 'agente-ia',    label: 'Agente IA' },
@@ -90,6 +90,23 @@ export const CONFIG_SUB_ITEMS = [
   { seg: 'agentes',      label: 'Conector MCP' },
 ] as const
 
-export function getConfigSubLabel(seg: string): string | null {
-  return CONFIG_SUB_ITEMS.find(i => i.seg === seg)?.label ?? null
+/** Sub-seções de /marketing (issue #24) — mesmo papel do CONFIG_SUB_ITEMS
+ *  acima, usado pelo SidebarMarketingAccordion e pelo HeaderModuleTitle. */
+export const MARKETING_SUB_ITEMS = [
+  { seg: '',           label: 'Visão Geral' },
+  { seg: 'meta-ads',   label: 'Meta Ads' },
+  { seg: 'google-ads', label: 'Google Ads' },
+] as const
+
+const SUB_ITEMS_BY_SEGMENT: Record<string, readonly { seg: string; label: string }[]> = {
+  configuracoes: CONFIG_SUB_ITEMS,
+  marketing: MARKETING_SUB_ITEMS,
+}
+
+/** Rótulo do 2º segmento dentro de uma rota com sub-navegação conhecida
+ *  (Configurações, Anúncios) — usado no título do módulo no header pra
+ *  formar "Configurações / Agente IA", "Anúncios / Meta Ads" etc. */
+export function getSubLabel(seg1: string, seg2: string): string | null {
+  const items = SUB_ITEMS_BY_SEGMENT[seg1]
+  return items?.find(i => i.seg === seg2)?.label ?? null
 }

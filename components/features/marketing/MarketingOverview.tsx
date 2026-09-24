@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CampaignsTable from './CampaignsTable'
@@ -29,11 +29,17 @@ import MarketingOverviewSetupBanner from './MarketingOverviewSetupBanner'
 export default function MarketingOverview({ orgSlug, overview, accounts, campaigns, period, metaLoginUserName, initialMetricsPrefs }: Props) {
   const [, startTransition] = useTransition()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveGroup | 'all'>('all')
   // Só 1 conta por vez nos gráficos/tabela — misturar métricas de contas
-  // diferentes na mesma série confundia mais do que ajudava. Começa com a
-  // primeira conta da lista.
-  const [accountFilter, setAccountFilter] = useState<string | null>(accounts[0]?.id ?? null)
+  // diferentes na mesma série confundia mais do que ajudava. `?account=`
+  // (deep link vindo da tabela "Distribuição por plataforma" da Visão Geral,
+  // issue #24) tem prioridade sobre o default de "primeira conta da lista",
+  // mas só se essa conta realmente pertencer a este provider/aba.
+  const accountParam = searchParams?.get('account') ?? null
+  const [accountFilter, setAccountFilter] = useState<string | null>(
+    accountParam && accounts.some(a => a.id === accountParam) ? accountParam : (accounts[0]?.id ?? null),
+  )
   // Quais campanhas entram no gráfico — checkbox por linha na tabela.
   // 'all' = todas (default); um Set explícito = só as marcadas.
   const [chartCampaignFilter, setChartCampaignFilter] = useState<Set<string> | 'all'>('all')
@@ -72,6 +78,15 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
   const noAccountsYet = accounts.length === 0
   const noCampaignsYet = campaigns.length === 0
+
+  // Resync automático e os dois gráficos de drill-down "ao vivo" (Custo por
+  // anúncio, Conversão por anúncio) só existem pra contas Meta de verdade —
+  // syncAdAccountCampaigns rejeita qualquer outro provider, e os drill-downs
+  // seriam sempre vazios pra contas Google/manuais. Sem esse gate, a aba
+  // Google Ads (issue #24) reaproveitando este mesmo componente mostrava um
+  // botão "Resincronizar" que sempre falhava e dois cards permanentemente
+  // vazios (achado do Codex review na PR #44).
+  const isMetaAccount = accounts.find(a => a.id === accountFilter)?.provider === 'meta'
 
   function refresh() {
     startTransition(() => router.refresh())
@@ -113,6 +128,7 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
         onChangeChartMetrics={setVisibleChartMetrics}
         syncing={syncing}
         onResyncAccount={resyncAccount}
+        canResync={isMetaAccount}
         noAccountsYet={noAccountsYet}
         noCampaignsYet={noCampaignsYet}
         objectiveFilter={objectiveFilter}
@@ -171,8 +187,10 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Multi-metric chart — visibilidade controlada pelo MetricPicker */}
-            <Card className="lg:col-span-2">
+            {/* Multi-metric chart — visibilidade controlada pelo MetricPicker.
+                Ocupa a linha inteira quando o drill-down ao lado está
+                escondido (conta não-Meta). */}
+            <Card className={isMetaAccount ? 'lg:col-span-2' : 'lg:col-span-3'}>
               <CardHeader>
                 <CardTitle className="text-base">Evolução das métricas</CardTitle>
                 <p className="text-xs text-muted-foreground">
@@ -186,23 +204,27 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
 
             {/* Custo por anúncio — substitui "Leads por campanha": mais
                 acionável pra quem gerencia a verba (onde o dinheiro está
-                indo e a que custo, anúncio a anúncio). */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Custo por anúncio</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Valor investido, CPM e valor por conversão de cada anúncio.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <AdSpendCpmChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
-              </CardContent>
-            </Card>
+                indo e a que custo, anúncio a anúncio). Drill-down "ao vivo"
+                só existe pra contas Meta. */}
+            {isMetaAccount && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Custo por anúncio</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Valor investido, CPM e valor por conversão de cada anúncio.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <AdSpendCpmChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Charts row 2 — impressões/CPM e conversão por anúncio */}
+          {/* Charts row 2 — impressões/CPM (genérico) e conversão por
+              anúncio (drill-down "ao vivo", só Meta). */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2">
+            <Card className={isMetaAccount ? 'lg:col-span-2' : 'lg:col-span-3'}>
               <CardHeader>
                 <CardTitle className="text-base">Impressões e CPM</CardTitle>
                 <p className="text-xs text-muted-foreground">
@@ -214,17 +236,19 @@ export default function MarketingOverview({ orgSlug, overview, accounts, campaig
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Conversão por anúncio</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Ranking dos anúncios individuais — conversões, cliques e impressões numa única barra.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ConversionByAdChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
-              </CardContent>
-            </Card>
+            {isMetaAccount && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Conversão por anúncio</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Ranking dos anúncios individuais — conversões, cliques e impressões numa única barra.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ConversionByAdChart orgSlug={orgSlug} adAccountId={accountFilter} period={period} />
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Charts row 3 — investimento por objetivo e comparação com período anterior */}
