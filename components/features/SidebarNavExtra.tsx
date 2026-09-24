@@ -12,7 +12,6 @@ import { getDisabledModulesForNiche } from '@/lib/module-flags'
 import {
   FileText, Package, Zap, Send, FileSignature,
   Star, Building2, ShieldAlert, FileStack, MessageCircle, Headset,
-  FolderKanban,
 } from 'lucide-react'
 
 /** Non-interactive section divider label. */
@@ -100,13 +99,6 @@ export async function SidebarNavExtra({
           <SectionLabel>Agências de Tráfego</SectionLabel>
 
           <SidebarClientAccordion base={base} />
-
-          <SidebarNavLink href={`${base}/agencias-trafego/projetos`}>
-            <span className="flex items-center gap-2.5">
-              <FolderKanban className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-              <span>Projetos</span>
-            </span>
-          </SidebarNavLink>
         </>
       )}
 

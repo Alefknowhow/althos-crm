@@ -10,6 +10,8 @@ export type PermissionKey =
   | 'leads'
   | 'clients'
   | 'tasks'
+  | 'events'
+  | 'projects'
   | 'catalog'
   | 'sales'
   | 'calendar'
@@ -64,11 +66,14 @@ export type PermissionModule = {
 }
 
 export const PERMISSION_MODULES: PermissionModule[] = [
+  // Agenda (Tarefas/Calendário/Projetos — issue #14, disponível a qualquer nicho)
+  { key: 'tasks',         label: 'Tarefas',           section: 'Agenda' },
+  { key: 'events',        label: 'Calendário',        section: 'Agenda' },
+  { key: 'projects',      label: 'Projetos',          section: 'Agenda' },
   // Vendas (nichos não-viagens)
   { key: 'pipeline',      label: 'Pipeline',         section: 'Vendas' },
   { key: 'leads',         label: 'Leads',             section: 'Vendas' },
   { key: 'clients',       label: 'Clientes',          section: 'Vendas' },
-  { key: 'tasks',         label: 'Tarefas',           section: 'Vendas' },
   { key: 'catalog',       label: 'Catálogo',          section: 'Vendas' },
   { key: 'sales',         label: 'Vendas',            section: 'Vendas' },
   { key: 'calendar',      label: 'Agendamentos',      section: 'Vendas' },
@@ -148,6 +153,8 @@ export function defaultMemberPermissions(): Permissions {
     pipeline:      true,
     leads:         true,
     tasks:         true,
+    events:        true,
+    projects:      false,
     calendar:      true,
     conversations: false,
     social:        false,

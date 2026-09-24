@@ -38,11 +38,11 @@ export default function ProjectsList({ orgSlug, projects }: { orgSlug: string; p
             return (
               <TableRow key={p.id} className="cursor-pointer">
                 <TableCell>
-                  <Link href={`/app/${orgSlug}/agencias-trafego/projetos/${p.id}`} className="font-medium hover:underline">
+                  <Link href={`/app/${orgSlug}/agenda/projetos/${p.id}`} className="font-medium hover:underline">
                     {p.name}
                   </Link>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{p.client?.name}</TableCell>
+                <TableCell className="text-muted-foreground">{p.client?.name || 'Uso interno'}</TableCell>
                 <TableCell className="text-muted-foreground">{p.owner?.name || '—'}</TableCell>
                 <TableCell className="min-w-[140px]">
                   <div className="flex items-center gap-2">

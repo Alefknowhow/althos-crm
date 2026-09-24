@@ -54,7 +54,7 @@ export default function ProjectsView({ orgSlug, projects, clients, members, hide
         <EmptyState
           icon={FolderKanban}
           title="Nenhum projeto ainda"
-          description="Crie um projeto para organizar as tarefas de um cliente por iniciativa (ex.: uma campanha ou implantação)."
+          description="Crie um projeto para organizar tarefas por iniciativa (ex.: uma campanha, implantação ou entrega interna) — com ou sem cliente vinculado."
         />
       </div>
     )

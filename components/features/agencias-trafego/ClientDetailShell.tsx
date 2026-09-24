@@ -20,7 +20,7 @@ import ClientReportsTab from '@/components/features/agencias-trafego/ClientRepor
 import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
 import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBuilder'
 import MarketingStrategistDock from '@/components/features/agencias-trafego/MarketingStrategistDock'
-import ProjectsView from '@/components/features/agencias-trafego/projetos/ProjectsView'
+import ProjectsView from '@/components/features/agenda/projetos/ProjectsView'
 import type { ProjectRow } from '@/actions/projects'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'

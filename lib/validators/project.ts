@@ -22,7 +22,9 @@ export const PROJECT_HEALTH_LABEL: Record<ProjectHealth, string> = {
 
 export const projectSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  client_id: z.string().uuid('Selecione um cliente'),
+  // Opcional desde a issue #14 (Agenda → Projetos): um projeto pode existir
+  // sem cliente vinculado, para uso interno.
+  client_id: z.string().uuid().optional().or(z.literal('')),
   description: z.string().optional(),
   objective: z.string().optional(),
   owner_id: z.string().uuid().optional().or(z.literal('')),

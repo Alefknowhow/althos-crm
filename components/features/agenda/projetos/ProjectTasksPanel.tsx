@@ -26,7 +26,7 @@ type Member = { user_id: string; name: string; email: string }
 interface Props {
   orgSlug: string
   projectId: string
-  clientId: string
+  clientId: string | null
   clientName: string
   groups: Group[]
   tasks: Task[]
@@ -187,7 +187,7 @@ export default function ProjectTasksPanel({ orgSlug, projectId, clientId, client
           é o que o botão que abriu o diálogo definiu. */}
       <TaskDialog
         orgSlug={orgSlug}
-        defaultLead={{ id: clientId, name: clientName }}
+        defaultLead={clientId ? { id: clientId, name: clientName } : null}
         members={members}
         open={dialogOpen}
         onOpenChange={setDialogOpen}

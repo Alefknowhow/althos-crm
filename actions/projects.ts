@@ -1,20 +1,22 @@
 'use server'
 
 /**
- * Módulo Projetos (Agências de Tráfego) — CRUD de projetos/grupos.
+ * Módulo Agenda → Projetos (issue #14) — CRUD de projetos/grupos.
  * Projeto é só uma camada de organização sobre Tasks: progresso e contagens
  * são sempre calculados a partir de tasks.project_id, nunca preenchidos à
- * mão. Ver supabase/migrations/0260_projetos.sql.
+ * mão. Ver supabase/migrations/0260_projetos.sql e 0267 (generalização —
+ * client_id passou a ser opcional, projeto pode ser de uso interno).
  */
 
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
 import { projectSchema, projectGroupSchema, type ProjectInput } from '@/lib/validators/project'
 import { revalidatePath } from 'next/cache'
 
 export type ProjectRow = {
   id: string
-  client_id: string
+  client_id: string | null
   name: string
   description: string | null
   objective: string | null
@@ -108,6 +110,8 @@ export async function listProjectGroups(orgSlug: string, projectId: string) {
 export async function createProject(orgSlug: string, input: ProjectInput) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
 
   const validation = projectSchema.safeParse(input)
@@ -116,7 +120,7 @@ export async function createProject(orgSlug: string, input: ProjectInput) {
 
   const { data, error } = await supabase.from('projetos').insert({
     organization_id: org.id,
-    client_id: v.client_id,
+    client_id: v.client_id || null,
     name: v.name,
     description: v.description || null,
     objective: v.objective || null,
@@ -129,16 +133,20 @@ export async function createProject(orgSlug: string, input: ProjectInput) {
   }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${v.client_id}`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
+  if (v.client_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${v.client_id}`)
   return { ok: true as const, id: data.id as string }
 }
 
 export async function updateProject(orgSlug: string, projectId: string, input: Partial<ProjectInput>) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
 
   const updates: Record<string, unknown> = {}
+  if (input.client_id !== undefined) updates.client_id = input.client_id || null
   if (input.name !== undefined) updates.name = input.name
   if (input.description !== undefined) updates.description = input.description || null
   if (input.objective !== undefined) updates.objective = input.objective || null
@@ -153,8 +161,8 @@ export async function updateProject(orgSlug: string, projectId: string, input: P
   const { error } = await supabase.from('projetos').update(updates).eq('id', projectId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${projectId}`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos/${projectId}`)
   return { ok: true as const }
 }
 
@@ -164,28 +172,37 @@ export async function setProjectStatus(orgSlug: string, projectId: string, statu
 }
 
 export async function archiveProject(orgSlug: string, projectId: string, archived: boolean) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
   const { error } = await supabase.from('projetos')
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq('id', projectId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }
 
 export async function deleteProject(orgSlug: string, projectId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
   // Tasks vinculadas não são apagadas — só perdem o vínculo (ON DELETE SET NULL na FK).
   const { error } = await supabase.from('projetos').delete().eq('id', projectId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }
 
 export async function createProjectGroup(orgSlug: string, projectId: string, name: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
 
   const validation = projectGroupSchema.safeParse({ project_id: projectId, name })
@@ -201,25 +218,31 @@ export async function createProjectGroup(orgSlug: string, projectId: string, nam
   }).select('id').single()
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${projectId}`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos/${projectId}`)
   return { ok: true as const, id: data.id as string }
 }
 
 export async function renameProjectGroup(orgSlug: string, groupId: string, name: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
   const { error } = await supabase.from('projeto_grupos').update({ name }).eq('id', groupId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }
 
 export async function deleteProjectGroup(orgSlug: string, groupId: string) {
+  const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
+  const check = await checkMemberPermission(org.id, user.id, 'projects')
+  if (!check.allowed) return { ok: false as const, error: check.reason }
   const supabase = createClient()
   // Tasks do grupo não são apagadas — só voltam a ficar sem grupo (ON DELETE SET NULL).
   const { error } = await supabase.from('projeto_grupos').delete().eq('id', groupId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos`)
+  revalidatePath(`/app/${orgSlug}/agenda/projetos`)
   return { ok: true as const }
 }

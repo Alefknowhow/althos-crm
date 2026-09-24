@@ -141,6 +141,6 @@ export async function generateTasksFromSuggestions(
     .eq('organization_id', org.id)
 
   revalidatePath(`/app/${orgSlug}/reservas`)
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   return { ok: true as const, tasksCreated: selected.length }
 }

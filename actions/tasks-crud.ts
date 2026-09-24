@@ -78,10 +78,10 @@ export async function createTask(orgSlug: string, input: TaskInput) {
   })
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   if (v.contato_id) revalidatePath(`/app/${orgSlug}/contatos/${v.contato_id}`)
   if (v.sale_id) revalidatePath(`/app/${orgSlug}/reservas`)
-  if (v.project_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${v.project_id}`)
+  if (v.project_id) revalidatePath(`/app/${orgSlug}/agenda/projetos/${v.project_id}`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
@@ -170,8 +170,8 @@ export async function updateTask(orgSlug: string, taskId: string, input: TaskUpd
   const { error } = await supabase.from('tasks').update(updates).eq('id', taskId).eq('organization_id', org.id)
 
   if (error) return { ok: false as const, error: error.message }
-  revalidatePath(`/app/${orgSlug}/tarefas`)
-  if (input.project_id) revalidatePath(`/app/${orgSlug}/agencias-trafego/projetos/${input.project_id}`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
+  if (input.project_id) revalidatePath(`/app/${orgSlug}/agenda/projetos/${input.project_id}`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
@@ -184,7 +184,7 @@ export async function deleteTask(orgSlug: string, taskId: string) {
   const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true }
 }
@@ -198,7 +198,7 @@ export async function toggleTaskStatus(orgSlug: string, taskId: string, status: 
     .eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true }
 }
@@ -214,7 +214,7 @@ export async function setTaskStatus(orgSlug: string, taskId: string, status: 'op
     .eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
@@ -227,7 +227,7 @@ export async function setTaskPriority(orgSlug: string, taskId: string, priority:
   const { error } = await supabase.from('tasks').update({ priority }).eq('id', taskId).eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
 
-  revalidatePath(`/app/${orgSlug}/tarefas`)
+  revalidatePath(`/app/${orgSlug}/agenda/tarefas`)
   revalidatePath(`/app/${orgSlug}`)
   return { ok: true as const }
 }
