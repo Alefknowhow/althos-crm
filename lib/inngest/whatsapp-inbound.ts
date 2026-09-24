@@ -6,6 +6,13 @@
  * enfileira este evento — quem chama a Anthropic e manda a resposta pra
  * Meta é esta function, fora do ciclo de resposta rápido que a Meta espera.
  * Mesmo padrão do Instagram (lib/inngest/social-inbound.ts).
+ *
+ * Atribuições (issue #49): se a org atribuiu um Agent Definition (#46) ao
+ * cenário "whatsapp.inbound" (agent_assignments), a persona/tom/regras dele
+ * substituem attendant.persona_prompt/model — todo o resto (créditos,
+ * memória, horário, handoff, filtro de tools) continua vindo de
+ * ai_attendant_config, sem duplicar. Sem atribuição, comportamento idêntico
+ * a antes da #49.
  */
 
 import { inngest } from './client'
@@ -15,6 +22,9 @@ import { respondAsAttendant, summarizeForHandoff } from '@/lib/ai/attendant-engi
 import { ATTENDANT_TOOLS, executeAttendantTool } from '@/lib/ai/attendant-tools'
 import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { checkFeatureAccess, consumeAiCredits } from '@/lib/plans/server'
+import { resolveAssignedAgentDefinition, SCENARIO_WHATSAPP_INBOUND } from '@/lib/agent-definitions/assignments'
+import { buildPersonaPromptFromDefinition } from '@/lib/agent-definitions/prompt'
+import { getActiveLibraryItems, libraryItemsToKnowledgeBase } from '@/lib/ai/library'
 
 export type WhatsappInboundEvent = {
   orgId: string
@@ -88,6 +98,15 @@ export const processWhatsappInboundFn = inngest.createFunction(
     // atendimento continua 100% manual, como sempre foi.
     if (!attendant?.is_enabled) return { skipped: 'ai-disabled' }
 
+    // Atribuições (issue #49): se a org atribuiu um Agent Definition (#46)
+    // pro cenário "whatsapp.inbound", a persona/tom/regras dele substitui
+    // attendant.persona_prompt — todo o resto (créditos, memória, horário,
+    // handoff, filtro de tools) continua exatamente como hoje. Sem
+    // atribuição (o padrão pra toda org existente), zero mudança de
+    // comportamento — o "cérebro" do SDR só passa a vir do Agent Definition
+    // quando a org explicitamente configurar isso.
+    const assignedDefinition = await resolveAssignedAgentDefinition(admin, orgId, SCENARIO_WHATSAPP_INBOUND)
+
     const { data: conv } = await admin
       .from('whatsapp_conversations')
       .select('id, contact_phone, contact_name, contato_id, automation_paused, ai_replies_count')
@@ -146,6 +165,12 @@ export const processWhatsappInboundFn = inngest.createFunction(
       .eq('is_active', true)
       .order('priority', { ascending: false })
 
+    // Biblioteca compartilhada (issue #50) — soma à FAQ própria do
+    // atendente em vez de substituir; org sem itens na Biblioteca ainda
+    // não muda nada aqui (array vazio).
+    const libraryItems = await getActiveLibraryItems(admin, orgId)
+    const knowledgeBase = [...(knowledge || []), ...libraryItemsToKnowledgeBase(libraryItems)]
+
     let leadProfile: any = null
     if (conv.contato_id) {
       const { data: lead } = await admin
@@ -188,9 +213,9 @@ export const processWhatsappInboundFn = inngest.createFunction(
     try {
       result = await respondAsAttendant(
         {
-          personaPrompt:   attendant.persona_prompt,
+          personaPrompt:   assignedDefinition ? buildPersonaPromptFromDefinition(assignedDefinition) : attendant.persona_prompt,
           businessContext: org.ai_business_context,
-          knowledgeBase:   (knowledge || []) as any,
+          knowledgeBase:   knowledgeBase as any,
           handoffPhrases:  (attendant.handoff_phrases as any) || [],
           guidedSteps: (attendant.guided_steps as any as string[]) || [],
           outOfHours,
@@ -203,7 +228,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
         {
           apiKey,
           baseURL,
-          model: org.ai_qualifier_model || 'claude-haiku-4-5',
+          model: assignedDefinition?.model || org.ai_qualifier_model || 'claude-haiku-4-5',
           maxOutputTokens: 600,
         },
       )

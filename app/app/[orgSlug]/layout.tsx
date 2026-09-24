@@ -23,6 +23,7 @@ import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { CopilotProvider } from '@/components/features/CopilotProvider'
+import OrchestratorPalette from '@/components/features/OrchestratorPalette'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { checkFeatureAccess, getAccountIdForOrgSlug } from '@/lib/plans/server'
 import { CallDialerProvider } from '@/components/features/voice/CallDialerModal'
@@ -118,6 +119,7 @@ export default async function OrgLayout({
           disparam o mesmo toggle global, evitando 2 diálogos concorrentes. */}
       <div className="print:hidden">
         <CommandPalette orgSlug={params.orgSlug} />
+        {canUseCopilot && <OrchestratorPalette orgSlug={params.orgSlug} />}
       </div>
       <SidebarCollapseProvider>
       <PageHintProvider>

@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { getAccountIdForOrgSlug, consumeAiCredits } from '@/lib/plans/server'
+import { appendBusinessContext } from '@/lib/ai/business-context'
+import { logAiExecution } from '@/lib/agent/audit'
 
 async function requireFormsAccess(orgSlug: string) {
   const user = await requireAuth()
@@ -118,20 +120,40 @@ export async function getFormAiInsights(
   const { apiKey, baseURL } = await resolveAnthropicEngine()
   const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
+  const startedAt = Date.now()
+  const audit = (status: 'success' | 'error', toolInput?: unknown, error?: string) =>
+    logAiExecution({
+      organizationId: org.id,
+      userId: access.user.id,
+      agentLabel: 'internal:forms_ai',
+      tool: 'report_insights',
+      input: toolInput,
+      status,
+      error,
+      executionMs: Date.now() - startedAt,
+    })
+
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-5',
       max_tokens: 1500,
-      system: 'Você analisa respostas de formulários de captação de um CRM brasileiro e devolve insights objetivos e acionáveis em português. Responda sempre com a ferramenta report_insights.',
+      system: appendBusinessContext(
+        'Você analisa respostas de formulários de captação de um CRM brasileiro e devolve insights objetivos e acionáveis em português. Responda sempre com a ferramenta report_insights.',
+        (org as any).ai_business_context,
+      ),
       messages: [{ role: 'user', content: prompt }],
       tools: [INSIGHTS_TOOL],
       tool_choice: { type: 'tool', name: 'report_insights' },
     })
 
     const toolBlock = response.content.find((b): b is any => b.type === 'tool_use')
-    if (!toolBlock) return { ok: false, error: 'IA não retornou insights.' }
+    if (!toolBlock) {
+      await audit('error', undefined, 'IA não retornou insights.')
+      return { ok: false, error: 'IA não retornou insights.' }
+    }
 
     const input = toolBlock.input as any
+    await audit('success', input)
     return {
       ok: true,
       insights: {
@@ -141,6 +163,7 @@ export async function getFormAiInsights(
       },
     }
   } catch (err: any) {
+    await audit('error', undefined, err?.message || 'Erro ao consultar IA.')
     return { ok: false, error: err?.message || 'Erro ao consultar IA.' }
   }
 }

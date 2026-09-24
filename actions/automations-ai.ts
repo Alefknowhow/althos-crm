@@ -14,6 +14,8 @@ import { getAccountIdForOrgSlug, consumeAiCredits } from '@/lib/plans/server'
 import { visibleTriggerTypes } from '@/lib/automations/trigger-meta'
 import { STEP_TYPES } from '@/components/features/automations/AutomationFlowMeta'
 import { nicheKeyFor } from '@/lib/niche'
+import { appendBusinessContext } from '@/lib/ai/business-context'
+import { logAiExecution } from '@/lib/agent/audit'
 
 export type AutomationAiChatTurn = { role: 'user' | 'assistant'; content: string }
 
@@ -157,20 +159,37 @@ export async function generateAutomationWithAi(
   const { apiKey, baseURL } = await resolveAnthropicEngine()
   const client = new Anthropic({ apiKey, ...(baseURL && { baseURL }) })
 
+  const startedAt = Date.now()
+  const audit = (status: 'success' | 'error', toolInput?: unknown, error?: string) =>
+    logAiExecution({
+      organizationId: access.org.id,
+      userId: access.user.id,
+      agentLabel: 'internal:automations_ai',
+      tool: 'propose_automation',
+      input: toolInput,
+      status,
+      error,
+      executionMs: Date.now() - startedAt,
+    })
+
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-5',
       max_tokens: 4000,
-      system: buildSystemPrompt((access.org as any).niche ?? null),
+      system: appendBusinessContext(buildSystemPrompt((access.org as any).niche ?? null), (access.org as any).ai_business_context),
       messages: history.map(m => ({ role: m.role, content: m.content })),
       tools: [PROPOSE_AUTOMATION_TOOL],
       tool_choice: { type: 'tool', name: 'propose_automation' },
     })
 
     const toolBlock = response.content.find((b): b is any => b.type === 'tool_use')
-    if (!toolBlock) return { ok: false, error: 'IA não retornou resposta.' }
+    if (!toolBlock) {
+      await audit('error', undefined, 'IA não retornou resposta.')
+      return { ok: false, error: 'IA não retornou resposta.' }
+    }
 
     const input = toolBlock.input as any
+    await audit('success', input)
     const reply = typeof input.reply === 'string' ? input.reply : 'Certo.'
     const ready = !!input.ready
     if (!ready) return { ok: true, reply, ready: false }
@@ -219,6 +238,7 @@ export async function generateAutomationWithAi(
       },
     }
   } catch (err: any) {
+    await audit('error', undefined, err?.message || 'Erro ao consultar IA.')
     return { ok: false, error: err?.message || 'Erro ao consultar IA.' }
   }
 }

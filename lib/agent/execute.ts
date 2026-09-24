@@ -1,6 +1,8 @@
 import type { AgentContext } from '@/lib/agent/context'
 import { agentCanAccess } from '@/lib/agent/context'
 import { logAgentToolCall } from '@/lib/agent/audit'
+import { enqueueApproval } from '@/lib/agent/approvals'
+import { createNotification } from '@/actions/notifications'
 import type { PermissionKey } from '@/lib/permissions'
 import { hasCapability } from '@/lib/capabilities/resolve.server'
 import type { CapabilityKey } from '@/lib/capabilities/types'
@@ -11,8 +13,8 @@ export type ToolDef<Input> = {
   name: string
   description: string
   riskLevel: RiskLevel
-  /** Ações MEDIUM+ ainda não têm approval flow nesta entrega — o
-   *  Execution Engine recusa antes de chamar o handler. */
+  /** true = enfileira em agent_pending_approvals (issue #51) em vez de
+   *  executar direto — precisa de aprovação humana antes de rodar. */
   requiresApproval: boolean
   permissionKey: PermissionKey
   /**
@@ -63,12 +65,24 @@ export async function executeTool<Input>(
   }
 
   if (tool.requiresApproval) {
+    const { id } = await enqueueApproval({ ctx, tool: tool.name, input })
     await logAgentToolCall({
-      ctx, tool: tool.name, input, status: 'denied',
-      error: 'Ação requer aprovação — ainda não suportado nesta fase',
+      ctx, tool: tool.name, input, status: 'pending_approval',
+      error: 'Ação enfileirada para aprovação humana.',
       executionMs: Date.now() - startedAt,
     })
-    return { ok: false, error: 'Esta ação requer aprovação humana e ainda não é suportada via agente.' }
+    await createNotification({
+      organizationId: ctx.orgId,
+      userId: ctx.userId,
+      type: 'agent_approval_pending',
+      title: `Aprovação pendente: ${tool.name}`,
+      content: `O agente "${ctx.agentLabel}" pediu pra executar "${tool.name}" e está aguardando sua aprovação.`,
+      link: `/app/${ctx.orgSlug}/configuracoes/aprovacoes`,
+    })
+    return {
+      ok: false,
+      error: `Esta ação requer aprovação humana antes de ser executada. Foi enfileirada (id ${id}) — avise o usuário que precisa revisar e aprovar em Configurações → Aprovações antes que ela aconteça de verdade.`,
+    }
   }
 
   try {

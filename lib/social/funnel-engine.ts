@@ -20,6 +20,7 @@ import { resolveAnthropicEngine } from '@/lib/ai/api-key'
 import { logOutboundMessage } from '@/lib/social/conversation-log'
 import { consumeAiCredits } from '@/lib/plans/server'
 import { getNextStepId, type FunnelFlow } from '@/lib/social/funnel-traversal'
+import { logAiExecution } from '@/lib/agent/audit'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -70,7 +71,7 @@ async function renderStep(
   }
 
   try {
-    return await generateAiReply({
+    const reply = await generateAiReply({
       apiKey,
       baseURL,
       model: org?.ai_qualifier_model,
@@ -81,8 +82,11 @@ async function renderStep(
       inboundText: inbound.text,
       senderUsername: inbound.senderUsername,
     })
+    await logAiExecution({ organizationId: orgId, userId: null, agentLabel: 'internal:social_ai', tool: 'generate_reply', status: 'success' })
+    return reply
   } catch (e: any) {
     console.error('[funnel] AI step failed:', e?.message)
+    await logAiExecution({ organizationId: orgId, userId: null, agentLabel: 'internal:social_ai', tool: 'generate_reply', status: 'error', error: e?.message })
     return ''
   }
 }

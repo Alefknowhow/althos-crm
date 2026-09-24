@@ -22,6 +22,7 @@ import { runFunnelForInbound, startCommentFunnel } from '@/lib/social/funnel-eng
 import { getOrCreateConversation, enrichConversationProfile, logInboundMessage, logOutboundMessage } from '@/lib/social/conversation-log'
 import { inngest } from '@/lib/inngest/client'
 import { consumeAiCredits } from '@/lib/plans/server'
+import { logAiExecution } from '@/lib/agent/audit'
 import {
   matches, maybeCreateLead, logPendingComment, rehostInboundAttachment,
   type InboundInteraction, type Automation,
@@ -266,8 +267,10 @@ export async function processInboundInteraction(inbound: InboundInteraction): Pr
         inboundText: inbound.text,
         senderUsername: inbound.senderUsername,
       })
+      await logAiExecution({ organizationId: orgId, userId: null, agentLabel: 'internal:social_ai', tool: 'generate_reply', status: 'success' })
     } catch (e: any) {
       console.error('[social engine] AI generation failed:', e?.message)
+      await logAiExecution({ organizationId: orgId, userId: null, agentLabel: 'internal:social_ai', tool: 'generate_reply', status: 'error', error: e?.message })
       return
     }
   }
