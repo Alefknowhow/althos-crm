@@ -1,15 +1,11 @@
 'use client'
 
 /**
- * Barra de controles do módulo Tarefas — reformulada guiada pelos 2
- * anexos do pedido (modo Calendário / modo Lista):
+ * Barra de controles do módulo Tarefas — só lista (o calendário virou
+ * Agenda → Eventos, set/2026):
  *  1. Cabeçalho: contagem "X atrasada · Y para hoje" + botão "Nova tarefa".
  *  2. Busca + "Minhas tarefas" (select) + "Filtros" (popover com badge).
- *  3. Barra de controles fixa: à esquerda, navegação de calendário (modo
- *     Calendário) OU abas de período (modo Lista); à direita, SEMPRE na
- *     mesma posição nos dois modos, o toggle Lista/Calendário — e, só no
- *     modo Calendário, o toggle Mês/Semana ao lado dele (pedido explícito:
- *     o toggle Lista/Calendário não pode mudar de lugar entre os modos).
+ *  3. Abas de período (Hoje/Esta semana/Este mês/Todas).
  */
 
 import { ActionButton as Button } from '@/components/features/ActionButton'
@@ -17,14 +13,13 @@ import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { relatedTypeOptions } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
-import { CalendarDays, List, Search, X, Plus, AlertCircle, SlidersHorizontal } from 'lucide-react'
+import { Search, X, Plus, AlertCircle, SlidersHorizontal } from 'lucide-react'
 import {
   type Member, type PriorityFilter, type AssigneeFilter,
-  type StatusFilter, type RelatedFilter, type CalView, type ViewMode, type ListPeriod,
+  type StatusFilter, type RelatedFilter, type ListPeriod,
   STATUS_OPTIONS, PRIORITY_META, FOCUS_RING,
 } from './TasksBoardShared'
 import { TasksBoardToolbarMobile } from './TasksBoardToolbarMobile'
-import { TasksBoardControlsRow } from './TasksBoardControlsRow'
 
 export const LIST_PERIODS: { id: ListPeriod; label: string }[] = [
   { id: 'today', label: 'Hoje' },
@@ -103,12 +98,10 @@ export function FilterFields({
 }
 
 export function TasksBoardToolbar({
-  search, setSearch, currentUserId, onlyMine, setOnlyMine, todayOnly, onClickToday, onNewTask,
-  calView, setCalView, onNavPrev, onNavNext, calMonth, weekDays,
+  search, setSearch, currentUserId, onlyMine, setOnlyMine, onNewTask,
   members, assignee, setAssignee, priority, setPriority, statusFilter, setStatusFilter,
   relatedFilter, setRelatedFilter, niche,
-  selectedDay, setSelectedDay,
-  viewMode, setViewMode, listPeriod, setListPeriod,
+  listPeriod, setListPeriod,
   overdueCount, todayCount,
 }: {
   search: string
@@ -116,15 +109,7 @@ export function TasksBoardToolbar({
   currentUserId?: string
   onlyMine: boolean
   setOnlyMine: (fn: (v: boolean) => boolean) => void
-  todayOnly: boolean
-  onClickToday: () => void
   onNewTask: () => void
-  calView: CalView
-  setCalView: (v: CalView) => void
-  onNavPrev: () => void
-  onNavNext: () => void
-  calMonth: Date
-  weekDays: Date[]
   members: Member[]
   assignee: AssigneeFilter
   setAssignee: (v: AssigneeFilter) => void
@@ -135,10 +120,6 @@ export function TasksBoardToolbar({
   relatedFilter: RelatedFilter
   setRelatedFilter: (v: RelatedFilter) => void
   niche?: string | null
-  selectedDay: string | null
-  setSelectedDay: (v: string | null) => void
-  viewMode: ViewMode
-  setViewMode: (v: ViewMode) => void
   listPeriod: ListPeriod
   setListPeriod: (v: ListPeriod) => void
   overdueCount: number
@@ -149,30 +130,6 @@ export function TasksBoardToolbar({
   function clearAllFilters() {
     setAssignee('all'); setPriority('all'); setStatusFilter('all'); setRelatedFilter('all')
   }
-
-  // Toggle Lista/Calendário — MESMO componente nos dois lugares (desktop e
-  // mobile) e sempre no mesmo ponto da barra (extremo direito da 2ª linha),
-  // pra nunca "pular de lugar" quando o modo muda (pedido explícito).
-  const ViewToggle = (
-    <div className="inline-flex rounded-lg border bg-muted/30 p-0.5 shrink-0">
-      <button
-        type="button"
-        onClick={() => setViewMode('list')}
-        className={cn('inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-colors', FOCUS_RING,
-          viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-      >
-        <List className="w-3.5 h-3.5" /> Lista
-      </button>
-      <button
-        type="button"
-        onClick={() => setViewMode('calendar')}
-        className={cn('inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition-colors', FOCUS_RING,
-          viewMode === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-      >
-        <CalendarDays className="w-3.5 h-3.5" /> Calendário
-      </button>
-    </div>
-  )
 
   return (
     <>
@@ -198,15 +155,13 @@ export function TasksBoardToolbar({
         search={search} setSearch={setSearch}
         currentUserId={currentUserId}
         onlyMine={onlyMine} setOnlyMine={setOnlyMine}
-        todayOnly={todayOnly} onClickToday={onClickToday}
         members={members}
         assignee={assignee} setAssignee={setAssignee}
         priority={priority} setPriority={setPriority}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
         relatedFilter={relatedFilter} setRelatedFilter={setRelatedFilter}
         niche={niche}
-        viewMode={viewMode} listPeriod={listPeriod} setListPeriod={setListPeriod}
-        viewToggle={ViewToggle}
+        listPeriod={listPeriod} setListPeriod={setListPeriod}
         activeFilterCount={activeFilterCount}
         clearAllFilters={clearAllFilters}
       />
@@ -278,17 +233,20 @@ export function TasksBoardToolbar({
           </Popover>
         </div>
 
-        {/* Barra de controles fixa: nav/abas à esquerda, view+período à
-            direita — o toggle Lista/Calendário fica sempre no mesmo lugar
-            (extremo direito), nos dois modos. */}
-        <TasksBoardControlsRow
-          viewMode={viewMode} calView={calView} setCalView={setCalView}
-          onNavPrev={onNavPrev} onNavNext={onNavNext} calMonth={calMonth} weekDays={weekDays}
-          onClickToday={onClickToday} todayOnly={todayOnly}
-          listPeriod={listPeriod} setListPeriod={setListPeriod}
-          selectedDay={selectedDay} setSelectedDay={setSelectedDay}
-          viewToggle={ViewToggle}
-        />
+        {/* Abas de período. */}
+        <div className="inline-flex rounded-lg border bg-muted/30 p-0.5">
+          {LIST_PERIODS.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setListPeriod(p.id)}
+              className={cn('px-3 h-7 rounded-md text-xs font-medium transition-colors', FOCUS_RING,
+                listPeriod === p.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
     </>
   )

@@ -1,52 +1,48 @@
 'use client'
 
 /**
- * Week-timeline calendar view for TasksBoard. Split out of
- * TasksBoardCalendarViews.tsx — prop-driven, none of this reads
- * TasksBoard's local state directly.
- *
- * Criação rápida por arraste: clique e arraste num trecho vazio da
- * timeline pra selecionar o horário (mínimo 30min — um clique simples,
- * sem arrastar, já cria um bloco padrão de 30min a partir do ponto
- * clicado). Ao soltar o mouse, `onRangeSelected` recebe o intervalo +
- * a posição em tela do trecho, pra o popover de criação (renderizado
- * pelo componente pai) abrir ancorado ali do lado — ver
- * TasksBoardQuickCreatePopover.tsx.
+ * Timeline por hora (Semana = 7 dias, Dia = 1 dia) — visual estilo Google
+ * Agenda: clicar/arrastar num trecho vazio seleciona o horário (mínimo
+ * 30min) e abre o popover de criação rápida; eventos existentes arrastam
+ * pra reagendar. Adaptado de TasksBoardWeekView.tsx (que ficou só em Tasks
+ * depois da separação Tarefas/Eventos, set/2026) pro shape de Event
+ * (start_at/end_at explícitos, sem "sem duração = bloco fixo" — todo evento
+ * tem intervalo real).
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { WEEKDAYS_PT, ROW_H, ymd, dueTimeOnly, type Task, type Member } from './TasksBoardShared'
-import { CalendarTaskChip } from './TasksBoardCalendarViews'
-import { type QuickAddSelection } from './TasksBoardQuickCreatePopover'
+import { WEEKDAYS_PT, ymd } from '@/components/features/tasks/TasksBoardShared'
+import { ROW_H, eventDaySegment, computeOverlapLayout } from './EventsShared'
+import EventChip from './EventChip'
+import type { EventRow } from '@/actions/events'
+import type { EventRangeSelection } from './EventQuickCreatePopover'
 
 type DragState = { day: string; rectTop: number; rectLeft: number; rectRight: number; startMin: number; endMin: number }
 
-export function WeekTimeline({
-  days, hours, todayYmd, tasksByDate, members, highlightId,
-  openPopoverId, setOpenPopoverId, dragOverKey, setDragOverKey,
-  onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd, onRangeSelected, renderPopover,
+export default function EventsWeekTimeline({
+  days, hours, todayYmd, eventsByDay,
+  dragOverKey, setDragOverKey,
+  onDropAllDay, onDropSlot, onChipDragStart, onChipDragEnd,
+  onRangeSelected, onOpenEvent,
 }: {
   days: Date[]
   hours: number[]
   todayYmd: string
-  tasksByDate: Record<string, Task[]>
-  members: Member[]
-  highlightId: string | null
-  openPopoverId: string | null
-  setOpenPopoverId: (id: string | null) => void
+  eventsByDay: Map<string, EventRow[]>
   dragOverKey: string | null
   setDragOverKey: (k: string | null) => void
   onDropAllDay: (e: React.DragEvent, dayYmd: string) => void
   onDropSlot: (e: React.DragEvent, dayYmd: string, hour: number) => void
   onChipDragStart: (e: React.DragEvent, id: string) => void
   onChipDragEnd: () => void
-  onRangeSelected: (selection: QuickAddSelection) => void
-  renderPopover: (task: Task, close: () => void) => React.ReactNode
+  onRangeSelected: (selection: EventRangeSelection) => void
+  onOpenEvent: (event: EventRow) => void
 }) {
+  const gridCols = days.length === 1 ? '56px_1fr' : `56px_repeat(${days.length},minmax(0,1fr))`
+
   // Linha vermelha da hora atual — atualiza a cada minuto, não a cada
-  // render, pra não precisar de um relógio "vivo" custando re-render
-  // constante no resto do painel.
+  // render, pra não custar re-render constante no resto do painel.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000)
@@ -55,7 +51,9 @@ export function WeekTimeline({
   const nowInHourRange = now.getHours() >= hours[0] && now.getHours() <= hours[hours.length - 1]
   const nowTop = (now.getHours() - hours[0]) * ROW_H + (now.getMinutes() / 60) * ROW_H
 
-  // Seleção por arraste — ver comentário do arquivo.
+  // Seleção por arraste — clique/arraste numa área vazia da timeline pra
+  // selecionar o horário; ao soltar, `onRangeSelected` recebe o intervalo +
+  // a posição em tela pro popover de criação abrir ancorado ali do lado.
   const dragRef = useRef<DragState | null>(null)
   const [preview, setPreview] = useState<{ day: string; topMin: number; endMin: number } | null>(null)
 
@@ -73,7 +71,7 @@ export function WeekTimeline({
 
   function handleColumnMouseDown(e: React.MouseEvent<HTMLDivElement>, day: string) {
     if (e.button !== 0) return
-    // Não inicia seleção ao clicar numa tarefa existente (o chip cuida do
+    // Não inicia seleção ao clicar num evento existente (o chip cuida do
     // próprio clique/drag) — só em área vazia da timeline.
     if ((e.target as HTMLElement).closest('[data-quickadd-ignore]')) return
     e.preventDefault()
@@ -120,9 +118,8 @@ export function WeekTimeline({
 
   return (
     <div className="rounded-[8px] border bg-card overflow-hidden">
-      {/* Cabeçalho dos dias — colunas de largura fixa (minmax(0,1fr)): texto
-          de tarefa nunca pode forçar uma coluna a crescer além disso. */}
-      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b">
+      {/* Cabeçalho dos dias */}
+      <div className="grid border-b" style={{ gridTemplateColumns: gridCols }}>
         <div />
         {days.map(d => {
           const key = ymd(d)
@@ -142,11 +139,11 @@ export function WeekTimeline({
       </div>
 
       {/* Dia inteiro */}
-      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b bg-muted/10">
+      <div className="grid border-b bg-muted/10" style={{ gridTemplateColumns: gridCols }}>
         <div className="text-[10px] text-muted-foreground px-1.5 py-2 uppercase tracking-wide">Dia inteiro</div>
         {days.map(d => {
           const key = ymd(d)
-          const allDay = (tasksByDate[key] || []).filter(t => !dueTimeOnly(t.due_date))
+          const allDay = (eventsByDay.get(key) || []).filter(e => e.all_day)
           const isDragOver = dragOverKey === `allday:${key}`
           return (
             <div
@@ -156,18 +153,8 @@ export function WeekTimeline({
               onDrop={e => onDropAllDay(e, key)}
               className={cn('border-l px-1 py-1.5 space-y-0.5 min-h-[36px] min-w-0', isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary/40')}
             >
-              {allDay.map(t => (
-                <CalendarTaskChip
-                  key={t.id}
-                  task={t}
-                  members={members}
-                  highlighted={highlightId === t.id}
-                  open={openPopoverId === t.id}
-                  onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
-                  onDragStart={e => onChipDragStart(e, t.id)}
-                  onDragEnd={onChipDragEnd}
-                  renderPopover={close => renderPopover(t, close)}
-                />
+              {allDay.map(ev => (
+                <EventChip key={ev.id} event={ev} onOpen={() => onOpenEvent(ev)} onDragStart={e => onChipDragStart(e, ev.id)} onDragEnd={onChipDragEnd} />
               ))}
             </div>
           )
@@ -175,7 +162,7 @@ export function WeekTimeline({
       </div>
 
       {/* Timeline */}
-      <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] relative select-none">
+      <div className="grid relative select-none" style={{ gridTemplateColumns: gridCols }}>
         {/* Coluna de horas */}
         <div>
           {hours.map(h => (
@@ -187,7 +174,8 @@ export function WeekTimeline({
 
         {days.map(d => {
           const key = ymd(d)
-          const timed = (tasksByDate[key] || []).filter(t => dueTimeOnly(t.due_date))
+          const timed = (eventsByDay.get(key) || []).filter(e => !e.all_day)
+          const overlapLayout = computeOverlapLayout(timed.map(ev => ({ id: ev.id, ...eventDaySegment(ev, key) })))
           const dayPreview = preview && preview.day === key ? preview : null
           return (
             <div key={key} className="relative border-l min-w-0 cursor-crosshair" onMouseDown={e => handleColumnMouseDown(e, key)}>
@@ -216,45 +204,28 @@ export function WeekTimeline({
 
               {/* Linha vermelha da hora atual — só na coluna de hoje */}
               {key === todayYmd && nowInHourRange && (
-                <div
-                  className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
-                  style={{ top: nowTop }}
-                >
+                <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center" style={{ top: nowTop }}>
                   <span className="w-2 h-2 -ml-1 rounded-full bg-red-500 shrink-0" />
                   <div className="h-px flex-1 bg-red-500" />
                 </div>
               )}
 
-              {/* Tarefas com horário, posicionadas proporcionalmente — com
-                  duração, o bloco ocupa a altura correspondente (funciona
-                  como agenda); sem duração, cai numa linha só (altura do
-                  chip, sem esticar). */}
-              {timed.map((t, _idx) => {
-                const time = dueTimeOnly(t.due_date)!
-                const [hh, mm] = time.split(':').map(Number)
-                const top = (hh - hours[0]) * ROW_H + (mm / 60) * ROW_H
-                const height = t.duration_minutes ? (t.duration_minutes / 60) * ROW_H : undefined
-                const overlap = timed.filter(o => dueTimeOnly(o.due_date) === time).length
-                const overlapIdx = timed.filter(o => dueTimeOnly(o.due_date) === time).indexOf(t)
+              {/* Eventos com horário, recortados ao dia (eventDaySegment) e
+                  posicionados proporcionalmente — funciona como agenda. */}
+              {timed.map(ev => {
+                const { startMin: segStart, endMin: segEnd } = eventDaySegment(ev, key)
+                const top = ((segStart - hours[0] * 60) / 60) * ROW_H
+                const height = ((segEnd - segStart) / 60) * ROW_H
+                const { col, cols } = overlapLayout.get(ev.id) ?? { col: 0, cols: 1 }
                 return (
                   <div
-                    key={t.id}
+                    key={ev.id}
                     data-quickadd-ignore
-                    style={{ top, height, left: overlap > 1 ? `${(overlapIdx / overlap) * 100}%` : 0, width: overlap > 1 ? `${100 / overlap}%` : '100%' }}
+                    style={{ top, height, left: cols > 1 ? `${(col / cols) * 100}%` : 0, width: cols > 1 ? `${100 / cols}%` : '100%' }}
                     className="absolute px-0.5 z-10"
                   >
                     <div className="h-full">
-                      <CalendarTaskChip
-                        expanded={height != null}
-                        task={t}
-                        members={members}
-                        highlighted={highlightId === t.id}
-                        open={openPopoverId === t.id}
-                        onOpenChange={o => setOpenPopoverId(o ? t.id : null)}
-                        onDragStart={e => onChipDragStart(e, t.id)}
-                        onDragEnd={onChipDragEnd}
-                        renderPopover={close => renderPopover(t, close)}
-                      />
+                      <EventChip expanded event={ev} onOpen={() => onOpenEvent(ev)} onDragStart={e => onChipDragStart(e, ev.id)} onDragEnd={onChipDragEnd} />
                     </div>
                   </div>
                 )

@@ -1,9 +1,11 @@
 'use client'
 
-/** Orquestrador da visão Calendário (Agenda → Calendário, issue #14) —
- *  alterna mês/semana/dia, busca a janela de eventos correspondente
- *  (listEventsForRange, server action chamada direto do client, mesmo
- *  padrão de RelatedEntityCombobox.tsx) e abre o EventDialog pra criar/editar. */
+/** Orquestrador de Agenda → Eventos — mês (grade de chips), semana e dia
+ *  (timeline por hora estilo Google Agenda, EventsWeekTimeline). Busca a
+ *  janela de eventos correspondente (listEventsForRange, server action
+ *  chamada direto do client, mesmo padrão de RelatedEntityCombobox.tsx) e
+ *  abre o EventDialog/EventQuickCreatePopover pra criar/editar. Só eventos
+ *  aqui — Tarefas não aparece (separação pedida explicitamente, set/2026). */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -11,28 +13,32 @@ import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { addDays, addMonths, addWeeks, startOfMonth, startOfWeek, ymd } from '@/components/features/tasks/TasksBoardShared'
 import { listEventsForRange, type EventRow } from '@/actions/events'
-import { rangeForView, groupEventsByDay, type CalView } from './CalendarShared'
-import CalendarMonthGrid from './CalendarMonthGrid'
-import CalendarWeekGrid from './CalendarWeekGrid'
-import CalendarDayList from './CalendarDayList'
+import { rangeForView, groupEventsByDay, computeHourRange, type CalView } from './EventsShared'
+import EventsMonthGrid from './EventsMonthGrid'
+import EventsWeekTimeline from './EventsWeekTimeline'
 import EventDialog from './EventDialog'
+import { EventQuickCreatePopover, type EventRangeSelection } from './EventQuickCreatePopover'
 import AgendaCreateMenu from './AgendaCreateMenu'
+import { useEventsCalendarMutations } from './useEventsCalendarMutations'
 
 type Member = { user_id: string; name: string; email: string }
 
-export default function CalendarView({
-  orgSlug, initialEvents, members = [], niche,
+export default function EventsView({
+  orgSlug, initialEvents, members = [], niche, canCreateTasks = true,
 }: {
   orgSlug: string
   initialEvents: EventRow[]
   members?: Member[]
   niche?: string | null
+  canCreateTasks?: boolean
 }) {
   const [view, setView] = useState<CalView>('month')
   const [anchor, setAnchor] = useState(() => new Date())
   const [events, setEvents] = useState<EventRow[]>(initialEvents)
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null)
+  const [quickAddTime, setQuickAddTime] = useState<string | undefined>(undefined)
+  const [quickAddRange, setQuickAddRange] = useState<EventRangeSelection | null>(null)
   const requestId = useRef(0)
 
   async function refetch() {
@@ -45,6 +51,10 @@ export default function CalendarView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refetch() }, [orgSlug, view, anchor])
 
+  const {
+    dragOverKey, setDragOverKey, onChipDragStart, onChipDragEnd, handleDropOnSlot, handleDropOnAllDay,
+  } = useEventsCalendarMutations({ orgSlug, events, setEvents, onChanged: refetch })
+
   const eventsByDay = useMemo(() => groupEventsByDay(events), [events])
   const todayYmd = ymd(new Date())
 
@@ -56,6 +66,12 @@ export default function CalendarView({
     const start = startOfWeek(anchor)
     return Array.from({ length: 7 }, (_, i) => addDays(start, i))
   }, [anchor])
+  const timelineDays = view === 'day' ? [anchor] : weekDays
+  const hourRange = useMemo(() => computeHourRange(timelineDays, eventsByDay), [timelineDays, eventsByDay])
+  const hours = useMemo(
+    () => Array.from({ length: hourRange.end - hourRange.start + 1 }, (_, i) => hourRange.start + i),
+    [hourRange],
+  )
 
   function navPrev() {
     setAnchor(a => view === 'month' ? addMonths(a, -1) : view === 'week' ? addWeeks(a, -1) : addDays(a, -1))
@@ -93,13 +109,13 @@ export default function CalendarView({
               <SelectItem value="day">Dia</SelectItem>
             </SelectContent>
           </Select>
-          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} />
+          <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} canCreateTasks={canCreateTasks} />
         </div>
       </div>
 
       <div className="min-h-[420px]">
-        {view === 'month' && (
-          <CalendarMonthGrid
+        {view === 'month' ? (
+          <EventsMonthGrid
             days={monthDays}
             calMonth={startOfMonth(anchor)}
             todayYmd={todayYmd}
@@ -107,20 +123,19 @@ export default function CalendarView({
             onDayClick={d => setQuickAddDate(d)}
             onOpenEvent={setEditing}
           />
-        )}
-        {view === 'week' && (
-          <CalendarWeekGrid
-            weekDays={weekDays}
+        ) : (
+          <EventsWeekTimeline
+            days={timelineDays}
+            hours={hours}
             todayYmd={todayYmd}
             eventsByDay={eventsByDay}
-            onDayClick={d => setQuickAddDate(d)}
-            onOpenEvent={setEditing}
-          />
-        )}
-        {view === 'day' && (
-          <CalendarDayList
-            day={anchor}
-            events={eventsByDay.get(ymd(anchor)) || []}
+            dragOverKey={dragOverKey}
+            setDragOverKey={setDragOverKey}
+            onDropAllDay={handleDropOnAllDay}
+            onDropSlot={handleDropOnSlot}
+            onChipDragStart={onChipDragStart}
+            onChipDragEnd={onChipDragEnd}
+            onRangeSelected={setQuickAddRange}
             onOpenEvent={setEditing}
           />
         )}
@@ -142,10 +157,25 @@ export default function CalendarView({
         members={members}
         niche={niche}
         defaultDate={quickAddDate || undefined}
+        defaultTime={quickAddTime}
         open={!!quickAddDate}
-        onOpenChange={o => !o && setQuickAddDate(null)}
+        onOpenChange={o => { if (!o) { setQuickAddDate(null); setQuickAddTime(undefined) } }}
         onSaved={refetch}
       />
+
+      {quickAddRange && (
+        <EventQuickCreatePopover
+          orgSlug={orgSlug}
+          selection={quickAddRange}
+          onClose={() => setQuickAddRange(null)}
+          onSaved={refetch}
+          onMoreOptions={(day, time) => {
+            setQuickAddRange(null)
+            setQuickAddDate(day)
+            setQuickAddTime(time)
+          }}
+        />
+      )}
     </div>
   )
 }

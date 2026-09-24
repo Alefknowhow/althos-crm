@@ -8,53 +8,36 @@
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import {
-  type Member, type Task, type GroupId, GROUPS, FOCUS_RING, addDays, startOfWeek,
+  type Member, type Task, type GroupId, type ListPeriod, GROUPS, FOCUS_RING,
 } from './TasksBoardShared'
-import { weekRangeLabel } from './TasksBoardCalendarViews'
 import { TaskListRow } from './TasksBoardTaskViews'
 
+const LIST_PERIOD_TITLE: Record<ListPeriod, string> = {
+  today: 'Tarefas de hoje',
+  week: 'Tarefas desta semana',
+  month: 'Tarefas deste mês',
+  all: 'Todas as tarefas',
+}
+
 export function TasksBoardListPanel({
-  orgSlug, members, selectedDay, setSelectedDay, todayOnly, calView, calMonth, weekAnchor,
-  grouped, expanded, toggleGroup, highlightId, onOpenFromList, onToggleDone, onSetPriority, onDelete,
+  orgSlug, members, listPeriod,
+  grouped, expanded, toggleGroup, onOpenFromList, onToggleDone, onSetPriority, onDelete,
 }: {
   orgSlug: string
   members: Member[]
-  selectedDay: string | null
-  setSelectedDay: (v: string | null) => void
-  todayOnly: boolean
-  calView: 'month' | 'week'
-  calMonth: Date
-  weekAnchor: Date
+  listPeriod: ListPeriod
   grouped: Record<GroupId, Task[]>
   expanded: Record<GroupId, boolean>
   toggleGroup: (id: GroupId) => void
-  highlightId: string | null
   onOpenFromList: (task: Task) => void
   onToggleDone: (task: Task) => void
   onSetPriority: (task: Task, p: Task['priority']) => void
   onDelete: (id: string) => void
 }) {
   return (
-    <div className="w-full lg:w-[65%] min-w-0 space-y-2 lg:order-2">
-      <div className="px-0.5 flex items-center gap-2">
-        <span className="text-sm font-semibold">
-          {selectedDay
-            ? new Date(selectedDay + 'T00:00:00Z').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long' }).toUpperCase()
-            : todayOnly
-              ? 'Tarefas de hoje'
-              : calView === 'month'
-                ? `Tarefas de ${calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`
-                : `Tarefas de ${weekRangeLabel(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(weekAnchor), i)))}`}
-        </span>
-        {selectedDay && (
-          <button
-            type="button"
-            onClick={() => setSelectedDay(null)}
-            className="text-xs text-primary hover:underline"
-          >
-            Voltar para Hoje
-          </button>
-        )}
+    <div className="w-full space-y-2">
+      <div className="px-0.5">
+        <span className="text-sm font-semibold">{LIST_PERIOD_TITLE[listPeriod]}</span>
       </div>
 
       {/* Cada grupo é seu próprio cartão, com respiro entre um e outro —
@@ -97,7 +80,6 @@ export function TasksBoardListPanel({
                         task={task}
                         orgSlug={orgSlug}
                         members={members}
-                        highlighted={highlightId === task.id}
                         onOpen={() => onOpenFromList(task)}
                         onToggleDone={() => onToggleDone(task)}
                         onSetPriority={p => onSetPriority(task, p)}

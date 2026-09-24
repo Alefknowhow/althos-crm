@@ -2,28 +2,46 @@
 
 /**
  * Seção mobile (abaixo de md) da TasksBoardToolbar — extraída só pra manter
- * o arquivo principal dentro do limite de linhas do lint. Mesmo conteúdo
- * de antes, sem lógica nova.
+ * o arquivo principal dentro do limite de linhas do lint. Só lista (sem
+ * calendário — isso é Agenda → Eventos agora).
  */
 
-import { useState, type ReactNode } from 'react'
-import { User2, Calendar, Search, X } from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { User2, Search, X } from 'lucide-react'
 import { RELATED_TYPE_LABELS, type RelatedTypeValue } from '@/lib/tasks/related-types'
 import { cn } from '@/lib/utils'
 import {
   type Member, type PriorityFilter, type AssigneeFilter,
-  type StatusFilter, type RelatedFilter, type ViewMode, type ListPeriod,
+  type StatusFilter, type RelatedFilter, type ListPeriod,
   GROUPS, PRIORITY_META, FOCUS_RING,
 } from './TasksBoardShared'
-import { FilterChip } from './TasksBoardCalendarViews'
 import { MobileFilterSheet, MobileFilterTrigger } from '@/components/features/mobile/MobileFilterSheet'
 import { FilterFields, LIST_PERIODS } from './TasksBoardToolbar'
 
+/** Badge de filtro ativo removível — só usado aqui (mobile); sem mais
+ *  consumidor de calendário pra justificar um arquivo compartilhado. */
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <Badge variant="secondary" className="gap-1 pr-1 font-normal">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remover filtro: ${label}`}
+        className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </Badge>
+  )
+}
+
 export function TasksBoardToolbarMobile({
-  search, setSearch, currentUserId, onlyMine, setOnlyMine, todayOnly, onClickToday,
+  search, setSearch, currentUserId, onlyMine, setOnlyMine,
   members, assignee, setAssignee, priority, setPriority, statusFilter, setStatusFilter,
   relatedFilter, setRelatedFilter, niche,
-  viewMode, listPeriod, setListPeriod, viewToggle,
+  listPeriod, setListPeriod,
   activeFilterCount, clearAllFilters,
 }: {
   search: string
@@ -31,8 +49,6 @@ export function TasksBoardToolbarMobile({
   currentUserId?: string
   onlyMine: boolean
   setOnlyMine: (fn: (v: boolean) => boolean) => void
-  todayOnly: boolean
-  onClickToday: () => void
   members: Member[]
   assignee: AssigneeFilter
   setAssignee: (v: AssigneeFilter) => void
@@ -43,10 +59,8 @@ export function TasksBoardToolbarMobile({
   relatedFilter: RelatedFilter
   setRelatedFilter: (v: RelatedFilter) => void
   niche?: string | null
-  viewMode: ViewMode
   listPeriod: ListPeriod
   setListPeriod: (v: ListPeriod) => void
-  viewToggle: ReactNode
   activeFilterCount: number
   clearAllFilters: () => void
 }) {
@@ -79,36 +93,21 @@ export function TasksBoardToolbarMobile({
             <User2 className="w-3.5 h-3.5" /> Minhas
           </button>
         )}
-        {viewMode === 'calendar' && (
-          <button
-            type="button"
-            onClick={onClickToday}
-            className={cn('inline-flex items-center gap-1 px-2.5 h-9 rounded-pill border text-xs font-medium shrink-0', FOCUS_RING, todayOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border')}
-          >
-            <Calendar className="w-3.5 h-3.5" /> Hoje
-          </button>
-        )}
         <MobileFilterTrigger activeCount={activeFilterCount} onClick={() => setMobileFiltersOpenLocal(true)} />
       </div>
 
-      {/* Fixo no mesmo lugar (linha própria) nos dois modos */}
-      <div className="flex items-center justify-between gap-2">
-        {viewMode === 'list' ? (
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {LIST_PERIODS.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setListPeriod(p.id)}
-                className={cn('px-2.5 h-8 rounded-md text-xs font-medium shrink-0', FOCUS_RING,
-                  listPeriod === p.id ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground')}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        ) : <span />}
-        {viewToggle}
+      <div className="flex items-center gap-1 overflow-x-auto">
+        {LIST_PERIODS.map(p => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setListPeriod(p.id)}
+            className={cn('px-2.5 h-8 rounded-md text-xs font-medium shrink-0', FOCUS_RING,
+              listPeriod === p.id ? 'bg-primary text-primary-foreground' : 'bg-muted/40 text-muted-foreground')}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {activeFilterCount > 0 && (

@@ -1,7 +1,14 @@
 /**
  * Types, pure date/format helpers and shared constants for TasksBoard
- * and its calendar/task-view sub-components. Split out of TasksBoard.tsx.
+ * and its task-view sub-components. Split out of TasksBoard.tsx.
  * No 'use client' needed -- nothing here uses hooks or browser APIs.
+ *
+ * Tarefas é só lista (sem calendário próprio) — a visão de calendário
+ * "estilo Google Agenda" (timeline por hora, arrastar pra criar) vive em
+ * Agenda → Eventos (components/features/agenda/eventos/), que reaproveita
+ * só os helpers de data genéricos daqui (WEEKDAYS_PT/startOfMonth/etc.),
+ * nunca o motor de Tasks. Tasks não marcam o calendário de Eventos, e
+ * Events não aparecem em Tarefas — são bases de dados e UIs isoladas.
  */
 
 export type Member = { user_id: string; name: string; email: string }
@@ -14,14 +21,19 @@ export type Task = {
   status: 'open' | 'doing' | 'done'
   priority: 'low' | 'normal' | 'high'
   due_date?: string | null
-  /** Duração opcional em minutos — usada só na visão Semana pra desenhar o
-   *  bloco da tarefa com a altura proporcional (funciona como agenda). */
+  /** Duração opcional em minutos — informativa (Tarefas não tem mais
+   *  timeline própria pra desenhar um bloco proporcional; isso agora é
+   *  Agenda → Eventos). */
   duration_minutes?: number | null
   completed_at?: string | null
   created_at?: string | null
   assigned_to?: string | null
   assignee_name?: string | null
   column_id?: string | null
+  /** Vínculo com Agenda → Projetos (issue #14/#17) — mesma task, só
+   *  agrupada por projeto/etapa quando presente. */
+  project_id?: string | null
+  project_group_id?: string | null
   sale_id?: string | null
   related_entity_type?: string | null
   related_entity_id?: string | null
@@ -34,13 +46,7 @@ export type AssigneeFilter = 'all' | 'none' | string
 export type GroupId = 'overdue' | 'today' | 'upcoming' | 'done'
 export type StatusFilter = 'all' | GroupId
 export type RelatedFilter = 'all' | string
-export type CalView = 'month' | 'week'
-/** Visão de topo do módulo — Calendário (grade) ou Lista (grupos por status).
- *  O botão que alterna entre as duas fica sempre na MESMA posição da barra
- *  de controles, nos dois modos (pedido explícito do redesign). */
-export type ViewMode = 'calendar' | 'list'
-/** Abas de período do modo Lista — substituem a navegação de calendário
- *  (que só existe no modo Calendário) por atalhos de intervalo. */
+/** Abas de período da lista de Tarefas. */
 export type ListPeriod = 'today' | 'week' | 'month' | 'all'
 
 // Cor da etiqueta de contagem no cabeçalho de cada grupo — reforça o
@@ -61,7 +67,6 @@ export const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 ]
 
 export const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-export const ROW_H = 64 // px por hora, na visão Semana
 
 export function todayISO() {
   const d = new Date()

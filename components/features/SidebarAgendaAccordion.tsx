@@ -7,18 +7,20 @@ import { Badge } from '@/components/ui/badge'
 import { ChevronDown, CalendarDays, CheckSquare, Calendar, FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type SubItem = { seg: 'tarefas' | 'calendario' | 'projetos'; label: string; icon: typeof CheckSquare }
+type SubItem = { seg: 'tarefas' | 'eventos' | 'projetos'; label: string; icon: typeof CheckSquare }
 
 const SUB_ITEMS: SubItem[] = [
   { seg: 'tarefas', label: 'Tarefas', icon: CheckSquare },
-  { seg: 'calendario', label: 'Calendário', icon: Calendar },
+  { seg: 'eventos', label: 'Eventos', icon: Calendar },
   { seg: 'projetos', label: 'Projetos', icon: FolderKanban },
 ]
 
 /** Item "Agenda" da sidebar (issue #14) — módulo único expansível reunindo
- *  Tarefas, Calendário e Projetos, mesmo padrão de acordeão de
+ *  Tarefas, Eventos e Projetos, mesmo padrão de acordeão de
  *  SidebarEmbarquesAccordion.tsx. Cada sub-item só aparece se a permissão
- *  correspondente (tasks/events/projects) permitir. */
+ *  correspondente (tasks/events/projects) permitir. Tarefas é só lista;
+ *  Eventos tem a timeline estilo Google Agenda (mês/semana/dia) — as duas
+ *  bases de dados/UIs são isoladas por pedido explícito (set/2026). */
 export default function SidebarAgendaAccordion({
   base, showTasks, showEvents, showProjects, overdueCount,
 }: {
@@ -38,7 +40,7 @@ export default function SidebarAgendaAccordion({
   const activeSeg = withinAgenda ? (pathname ?? '').slice(agendaBase.length + 1).split('/')[0] : null
 
   const items = SUB_ITEMS.filter(item =>
-    item.seg === 'tarefas' ? showTasks : item.seg === 'calendario' ? showEvents : showProjects
+    item.seg === 'tarefas' ? showTasks : item.seg === 'eventos' ? showEvents : showProjects
   )
   if (items.length === 0) return null
 

@@ -41,10 +41,11 @@ export default function ProjectDialog({ orgSlug, clients = [], members = [], def
   const [ownerId, setOwnerId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [tagsText, setTagsText] = useState('')
 
   function reset() {
     setName(''); setDescription(''); setObjective('')
-    setClientId(defaultClientId || ''); setOwnerId(''); setStartDate(''); setDueDate('')
+    setClientId(defaultClientId || ''); setOwnerId(''); setStartDate(''); setDueDate(''); setTagsText('')
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -56,6 +57,7 @@ export default function ProjectDialog({ orgSlug, clients = [], members = [], def
         owner_id: ownerId,
         start_date: startDate,
         due_date: dueDate,
+        tags: tagsText.split(',').map(t => t.trim()).filter(Boolean),
       })
       if (!res.ok) {
         toast.error(traduzirErro(res.error, 'Erro ao criar projeto'))
@@ -127,6 +129,11 @@ export default function ProjectDialog({ orgSlug, clients = [], members = [], def
               </Select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Tags <span className="text-muted-foreground font-normal">(opcional, separadas por vírgula)</span></Label>
+            <Input value={tagsText} onChange={e => setTagsText(e.target.value)} placeholder="Ex.: onboarding, prioridade-alta" />
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancelar</Button>
