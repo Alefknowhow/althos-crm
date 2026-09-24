@@ -5,7 +5,7 @@
  * Projeto é só uma camada de organização sobre Tasks: progresso e contagens
  * são sempre calculados a partir de tasks.project_id, nunca preenchidos à
  * mão. Ver supabase/migrations/0260_projetos.sql, 0272 (generalização —
- * client_id opcional) e 0273 (etapas configuráveis via column_id, tags,
+ * client_id opcional) e 0274 (etapas configuráveis via column_id, tags,
  * timeline — issue #17). `status` continua na tabela só como legado/
  * histórico; column_id é a fonte de verdade do Kanban desde a #17.
  */
