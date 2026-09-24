@@ -39,7 +39,7 @@ export default function EventsWeekTimeline({
   onRangeSelected: (selection: EventRangeSelection) => void
   onOpenEvent: (event: EventRow) => void
 }) {
-  const gridCols = days.length === 1 ? '56px_1fr' : `56px_repeat(${days.length},minmax(0,1fr))`
+  const gridCols = days.length === 1 ? '56px 1fr' : `56px repeat(${days.length}, minmax(0, 1fr))`
 
   // Linha vermelha da hora atual — atualiza a cada minuto, não a cada
   // render, pra não custar re-render constante no resto do painel.

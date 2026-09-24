@@ -66,7 +66,7 @@ export default function EventsView({
     const start = startOfWeek(anchor)
     return Array.from({ length: 7 }, (_, i) => addDays(start, i))
   }, [anchor])
-  const timelineDays = view === 'day' ? [anchor] : weekDays
+  const timelineDays = weekDays
   const hourRange = useMemo(() => computeHourRange(timelineDays, eventsByDay), [timelineDays, eventsByDay])
   const hours = useMemo(
     () => Array.from({ length: hourRange.end - hourRange.start + 1 }, (_, i) => hourRange.start + i),
@@ -74,17 +74,15 @@ export default function EventsView({
   )
 
   function navPrev() {
-    setAnchor(a => view === 'month' ? addMonths(a, -1) : view === 'week' ? addWeeks(a, -1) : addDays(a, -1))
+    setAnchor(a => view === 'month' ? addMonths(a, -1) : addWeeks(a, -1))
   }
   function navNext() {
-    setAnchor(a => view === 'month' ? addMonths(a, 1) : view === 'week' ? addWeeks(a, 1) : addDays(a, 1))
+    setAnchor(a => view === 'month' ? addMonths(a, 1) : addWeeks(a, 1))
   }
 
   const rangeLabel = view === 'month'
     ? anchor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    : view === 'week'
-      ? `${weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${weekDays[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
-      : anchor.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : `${weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${weekDays[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
 
   return (
     <div className="space-y-3">
@@ -106,7 +104,6 @@ export default function EventsView({
             <SelectContent>
               <SelectItem value="month">Mês</SelectItem>
               <SelectItem value="week">Semana</SelectItem>
-              <SelectItem value="day">Dia</SelectItem>
             </SelectContent>
           </Select>
           <AgendaCreateMenu orgSlug={orgSlug} members={members} niche={niche} defaultDate={ymd(anchor)} onEventSaved={refetch} canCreateTasks={canCreateTasks} />

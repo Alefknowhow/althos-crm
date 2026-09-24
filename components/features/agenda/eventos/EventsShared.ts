@@ -8,12 +8,9 @@
 import type { EventRow } from '@/actions/events'
 import { startOfMonth, startOfWeek, addDays, ymd } from '@/components/features/tasks/TasksBoardShared'
 
-export type CalView = 'month' | 'week' | 'day'
+export type CalView = 'month' | 'week'
 
 export function rangeForView(view: CalView, anchor: Date): { from: string; to: string } {
-  if (view === 'day') {
-    return { from: `${ymd(anchor)}T00:00:00.000Z`, to: `${ymd(anchor)}T23:59:59.999Z` }
-  }
   if (view === 'week') {
     const start = startOfWeek(anchor)
     const end = addDays(start, 6)
