@@ -1,168 +1,162 @@
 import { Suspense } from 'react'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Users, UserPlus, RefreshCw, Wallet, Smile, AlertTriangle, LineChart, Layers, Crown, MapPin, Gem } from 'lucide-react'
 import type { WidgetCtx } from '@/lib/dashboard/widget-registry'
-import {
-  getTicketMedio, getCustomerLTV, getCustomersByCity, getVipCustomers, getAtRiskCustomers,
-  getRepurchaseRate, getCustomerSegmentation, getNpsScore,
-} from '@/actions/dashboard-tabs'
-import { sinceFromPeriod } from '@/lib/dashboard/period'
-import KpiCard from '../KpiCard'
+import { getDates } from '@/actions/dashboard'
+import { getNpsScore, getCustomersByCity } from '@/actions/dashboard-tabs'
+import { getCustomerBase, SEGMENTS, SEGMENT_LABEL, type Segment } from '@/actions/dashboard-v2-customers'
+import { listOrgMembers } from '@/actions/sales'
+import { fmtCurrency0, fmtCurrencyCompact, fmtPct } from '@/lib/dashboard/format'
+import KpiRow from '../KpiRow'
+import DashboardCard, { EmptyChart } from '../DashboardCard'
 import BarListCard from '../BarListCard'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import CityRevenueChart from '../CityRevenueChart'
-import RecompraTable from '../RecompraTable'
-import { COMPACT_CARD_H } from '../dashboardSizes'
-import { Crown, MapPin, AlertTriangle, Layers, Smile, Users, UserPlus, Repeat, RefreshCw, Wallet, Receipt } from 'lucide-react'
+import MultiLineChart from '../charts/MultiLineChart'
+import NpsBreakdown from '../charts/NpsBreakdown'
+import StackedShareBar from '../charts/StackedShareBar'
+import CustomerTable from '../lists/CustomerTable'
+import { MAIN_CARD_H, TABLE_CARD_H, COMPACT_CARD_H } from '../dashboardSizes'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
-function fmtCurrency(cents: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((cents || 0) / 100)
+/** Cor fixa por segmento (segue a entidade, não o ranking). */
+const SEGMENT_COLOR: Record<Segment, string> = {
+  novo: '#1192e8',
+  ativo: '#0f62fe',
+  recorrente: '#24a148',
+  vip: '#8a3ffc',
+  dormente: '#a8a8a8',
+  risco: '#fa4d56',
 }
 
-const SEGMENT_LABEL: Record<string, string> = {
-  novo: 'Novo',
-  ativo: 'Ativo',
-  recorrente: 'Recorrente',
-  vip: 'VIP',
-  em_risco: 'Em risco',
-}
-const SEGMENT_ORDER = ['novo', 'ativo', 'recorrente', 'vip', 'em_risco'] as const
-
-/** Clientes/Pacientes — "quem são e como estão se comportando?". Foco em
- *  retenção e relacionamento, não é uma segunda página de vendas. No nicho
- *  Clínicas os rótulos viram "paciente" (mesmo dado por baixo). */
+/** Clientes/Pacientes — "quem são e como estão se comportando?". Casa do
+ *  LTV, retenção e relacionamento. No nicho Clínicas os rótulos viram
+ *  "paciente" (mesmo dado por baixo). */
 export default async function ClientesTab({ ctx, isClinic = false }: { ctx: WidgetCtx; isClinic?: boolean }) {
   const who = isClinic ? 'Paciente' : 'Cliente'
-  const whoLower = who.toLowerCase()
   const whoPlural = isClinic ? 'Pacientes' : 'Clientes'
-  const [ticket, ltv, cities, vipCustomers, atRiskCustomers, repurchase, segmentation, nps] = await Promise.all([
-    getTicketMedio(ctx.orgId, sinceFromPeriod(ctx.period)),
-    getCustomerLTV(ctx.orgId),
-    getCustomersByCity(ctx.orgId),
-    getVipCustomers(ctx.orgId),
-    getAtRiskCustomers(ctx.orgId),
-    getRepurchaseRate(ctx.orgId),
-    getCustomerSegmentation(ctx.orgId),
-    getNpsScore(ctx.orgId),
-  ])
+  const whoLower = who.toLowerCase()
+  const range = getDates(ctx.period)
 
-  const activeCustomers = segmentation.novo + segmentation.ativo + segmentation.recorrente + segmentation.vip
+  const [base, nps, cities, members] = await Promise.all([
+    getCustomerBase(ctx.orgId, range.start),
+    getNpsScore(ctx.orgId),
+    getCustomersByCity(ctx.orgId, 10),
+    listOrgMembers(ctx.orgSlug),
+  ])
+  const nameById = Object.fromEntries(members.map((m: any) => [m.id, m.name]))
+  const hasBase = base.totalCustomers > 0
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 sm:grid-cols-5 xl:grid-cols-9 gap-3">
-        <KpiCard
-          label="NPS"
-          value={nps.responses > 0 ? String(nps.score) : '—'}
-          help={
-            nps.responses > 0
-              ? `${nps.promoters} promotor(es), ${nps.passives} neutro(s), ${nps.detractors} detrator(es) — ${nps.responses} resposta(s) no total. NPS = %promotores − %detratores.`
-              : `Nenhuma resposta de NPS registrada ainda. Dispare a pesquisa em Contatos ou crie uma automação com o gatilho "Cliente Convertido".`
-          }
-          trend={nps.responses === 0 ? undefined : nps.score >= 50 ? 'up' : nps.score < 0 ? 'down' : undefined}
-          icon={<Smile />}
-        />
-        <KpiCard
-          label={`${whoPlural} ativos`}
-          value={String(activeCustomers)}
-          help={`${whoPlural} com compra concluída, exceto os em risco (sem comprar há 90+ dias).`}
-          icon={<Users />}
-        />
-        <KpiCard
-          label={`Novos ${whoLower}s`}
-          value={String(segmentation.novo)}
-          help={`${whoPlural} com exatamente 1 compra, feita nos últimos 30 dias.`}
-          icon={<UserPlus />}
-        />
-        <KpiCard
-          label={`${whoPlural} recorrentes`}
-          value={String(segmentation.recorrente)}
-          help={`${whoPlural} com 2 ou mais compras (fora do grupo VIP), não em risco.`}
-          icon={<Repeat />}
-        />
-        <KpiCard
-          label="Taxa de recompra"
-          value={`${repurchase.pct}%`}
-          help={`${repurchase.repeatCustomers} de ${repurchase.totalCustomers} cliente(s) compraram mais de uma vez.`}
-          icon={<RefreshCw />}
-        />
-        <KpiCard
-          label="LTV médio"
-          value={fmtCurrency(ltv.avgLtvCents)}
-          help={`Receita total histórica por cliente, média entre ${ltv.customersWithSales} cliente(s) com ao menos uma venda concluída.`}
-          icon={<Wallet />}
-        />
-        <KpiCard
-          label="Ticket médio"
-          value={fmtCurrency(ticket.avg_cents)}
-          help="Receita do período dividida pelo número de vendas concluídas."
-          icon={<Receipt />}
-        />
-        <KpiCard
-          label={`${whoPlural} VIP`}
-          value={String(segmentation.vip)}
-          help={`${whoPlural} entre os 10% de maior valor total comprado (histórico completo), não em risco.`}
-          icon={<Crown />}
-        />
-        <KpiCard
-          label={`${whoPlural} em risco`}
-          value={String(segmentation.em_risco)}
-          help={`${whoPlural} com ao menos uma compra, sem nenhuma compra nova há 90+ dias.`}
-          icon={<AlertTriangle />}
-        />
-      </div>
+      <KpiRow
+        items={[
+          { label: `${whoPlural} ativos`, value: String(base.active), help: `${whoPlural} com compra nos últimos 90 dias (novos, ativos, recorrentes e VIP).`, trendLabel: `de ${base.totalCustomers} com compra`, icon: <Users /> },
+          { label: `Novos ${whoLower}s`, value: String(base.newInPeriod), help: `${whoPlural} cuja primeira compra aconteceu no período selecionado.`, icon: <UserPlus /> },
+          { label: 'Taxa de recompra', value: fmtPct(base.repurchasePct, 1), help: `% dos ${whoLower}s com 2+ compras (histórico completo).`, icon: <RefreshCw /> },
+          { label: 'LTV médio', value: fmtCurrency0(base.avgLtvCents), help: `Receita total histórica por ${whoLower}, média entre quem tem ao menos uma compra.`, icon: <Wallet /> },
+          {
+            label: 'NPS',
+            value: nps.responses > 0 ? String(nps.score) : '—',
+            help: nps.responses > 0 ? 'NPS = %promotores − %detratores, sobre as respostas registradas.' : 'Nenhuma resposta de NPS registrada ainda. Dispare a pesquisa em Contatos ou crie uma automação com o gatilho "Cliente Convertido".',
+            trend: nps.responses === 0 ? undefined : nps.score >= 50 ? 'up' : nps.score < 0 ? 'down' : 'neutral',
+            trendLabel: nps.responses > 0 ? `${nps.responses} resposta(s)` : 'Sem respostas',
+            icon: <Smile />,
+          },
+          { label: `${whoPlural} em risco`, value: String(base.segments.risco.count), help: `${whoPlural} sem compra há 90-179 dias (180+ dias viram "dormentes").`, trend: base.segments.risco.count > 0 ? 'down' : undefined, trendLabel: `${base.segments.dormente.count} dormente(s)`, icon: <AlertTriangle /> },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <BarListCard
-          title={`Segmentação de ${whoLower}s`}
-          help="Distribuição por comportamento de compra: novo, ativo, recorrente, VIP e em risco."
-          icon={Layers}
-          rows={SEGMENT_ORDER.map(k => ({ label: SEGMENT_LABEL[k], value: segmentation[k], valueLabel: String(segmentation[k]) }))}
-          color="#0f62fe"
-          emptyText={`Nenhum ${whoLower} com compra concluída ainda.`}
-        />
-        <BarListCard
-          title={`${whoPlural} VIP`}
-          help="Top 5 por valor total histórico comprado."
-          icon={Crown}
-          rows={vipCustomers.map(c => ({ label: c.name, value: c.total_cents, valueLabel: fmtCurrency(c.total_cents) }))}
-          color="#f1c21b"
-          emptyText="Nenhuma venda concluída registrada ainda."
-        />
-        <BarListCard
-          title={`${whoPlural} em risco`}
-          help="Sem nenhuma compra há mais de 90 dias, ordenados pelo mais tempo parado."
-          icon={AlertTriangle}
-          rows={atRiskCustomers.map(c => ({ label: c.name, value: c.days_since_last_sale, valueLabel: `${c.days_since_last_sale}d` }))}
-          color="#da1e28"
-          emptyText={`Nenhum ${whoLower} parado há mais de 90 dias.`}
-        />
-        <Card className={`${COMPACT_CARD_H} flex flex-col overflow-hidden`}>
-          <CardHeader className="pb-2 shrink-0">
-            <CardTitle className="text-base flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              {whoPlural} por cidade
-            </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              {cities.some(c => c.commission_cents > 0)
-                ? `Barra = receita total (verde = comissão). Linha = nº de ${whoLower}s.`
-                : `Barra = receita total. Linha = nº de ${whoLower}s.`}
-            </p>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0">
-            {cities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum {whoLower} com cidade cadastrada.</p>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-8">
+          <DashboardCard title="Evolução da base" help={`${whoPlural} que compraram em cada mês: novos (1ª compra), recorrentes e reativados (voltaram após 180+ dias).`} icon={LineChart} heightClass={MAIN_CARD_H}>
+            {!hasBase ? (
+              <EmptyChart text={`Nenhum ${whoLower} com compra registrada.`} />
             ) : (
-              <CityRevenueChart rows={cities} hasCommission={cities.some(c => c.commission_cents > 0)} />
+              <MultiLineChart
+                data={base.evolution.map(e => ({ label: e.label, novos: e.novos, recorrentes: e.recorrentes, reativados: e.reativados }))}
+                series={[
+                  { key: 'novos', name: 'Novos', color: '#1192e8' },
+                  { key: 'recorrentes', name: 'Recorrentes', color: '#24a148' },
+                  { key: 'reativados', name: 'Reativados', color: '#8a3ffc' },
+                ]}
+              />
             )}
-          </CardContent>
-        </Card>
+          </DashboardCard>
+        </div>
+        <div className="md:col-span-4">
+          <DashboardCard title="NPS" help="Distribuição das respostas de satisfação." icon={Smile} heightClass={MAIN_CARD_H}>
+            {nps.responses === 0 ? (
+              <EmptyChart text="Nenhuma resposta de NPS ainda." hint='Dispare a pesquisa em Contatos ou crie uma automação com o gatilho "Cliente Convertido".' />
+            ) : (
+              <NpsBreakdown nps={nps} />
+            )}
+          </DashboardCard>
+        </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="h-[640px] w-full" />}>
-        <RecompraTable orgSlug={ctx.orgSlug} orgId={ctx.orgId} />
-      </Suspense>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-6">
+          <DashboardCard title="Segmentação da base" help="Distribuição dos clientes por comportamento de compra." icon={Layers} heightClass={COMPACT_CARD_H}>
+            {!hasBase ? (
+              <EmptyChart text={`Nenhum ${whoLower} com compra registrada.`} />
+            ) : (
+              <div className="h-full flex flex-col justify-center">
+                <StackedShareBar
+                  barHeight="h-12"
+                  segments={SEGMENTS.map(s => ({ label: SEGMENT_LABEL[s], value: base.segments[s].count, valueLabel: String(base.segments[s].count), color: SEGMENT_COLOR[s] }))}
+                />
+              </div>
+            )}
+          </DashboardCard>
+        </div>
+        <div className="md:col-span-6">
+          <BarListCard
+            title="LTV por segmento"
+            help="Receita histórica média por cliente em cada segmento."
+            icon={Gem}
+            color="#8a3ffc"
+            rows={SEGMENTS.filter(s => base.segments[s].count > 0)
+              .sort((a, b) => base.segments[b].avgLtvCents - base.segments[a].avgLtvCents)
+              .map(s => ({ label: SEGMENT_LABEL[s], value: base.segments[s].avgLtvCents, valueLabel: fmtCurrency0(base.segments[s].avgLtvCents), sublabel: `${base.segments[s].count} cliente(s)`, color: SEGMENT_COLOR[s] }))}
+            emptyText={`Nenhum ${whoLower} com compra registrada.`}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-6">
+          <DashboardCard title={`${whoPlural} VIP`} help="Top 10% de LTV entre os clientes ativos." icon={Crown} iconClassName="text-amber-500" heightClass={TABLE_CARD_H} scroll>
+            <CustomerTable
+              rows={base.vip}
+              variant="vip"
+              nameById={nameById}
+              itemLabel={isClinic ? 'Último item' : 'Último destino/item'}
+              countLabel="Compras"
+              emptyText={`Nenhum ${whoLower} VIP ainda.`}
+            />
+          </DashboardCard>
+        </div>
+        <div className="md:col-span-6">
+          <DashboardCard title={`${whoPlural} em risco`} help="Sem compra há 90-179 dias, por risco e LTV." icon={AlertTriangle} iconClassName="text-destructive" heightClass={TABLE_CARD_H} scroll>
+            <CustomerTable
+              rows={base.atRisk}
+              variant="risk"
+              nameById={nameById}
+              itemLabel=""
+              countLabel=""
+              emptyText={`Nenhum ${whoLower} em risco agora.`}
+            />
+          </DashboardCard>
+        </div>
+      </div>
+
+      <BarListCard
+        title={`${whoPlural} por cidade`}
+        help={`Top 10 cidades por nº de ${whoLower}s (sem geolocalização no cadastro — barras em vez de mapa). Valor ao lado = receita total.`}
+        icon={MapPin}
+        color="#0f62fe"
+        rows={cities.map(c => ({ label: c.city, value: c.customers, valueLabel: `${c.customers} ${whoLower}(s)`, sublabel: fmtCurrencyCompact(c.revenue_cents) }))}
+        emptyText={`Nenhum ${whoLower} com cidade cadastrada.`}
+      />
 
       <Suspense fallback={<MockInsightCard text="Carregando insight..." />}>
         <InsightCard orgSlug={ctx.orgSlug} tab="clientes" />
