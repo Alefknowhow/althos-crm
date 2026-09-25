@@ -11,7 +11,10 @@
  */
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
-import { getBrowserCallToken, hangupCall as hangupCallAction } from '@/actions/voice'
+// Imports diretos (não o barrel @/actions/voice) — ver comentário em
+// CallDialerModal.tsx (issue #12/#13).
+import { getBrowserCallToken } from '@/actions/voice-token'
+import { hangupCall as hangupCallAction } from '@/actions/voice-calls'
 
 interface ActiveCall {
   voiceCallId: string

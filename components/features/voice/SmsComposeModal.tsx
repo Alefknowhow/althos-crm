@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { Send } from 'lucide-react'
-import { listOrgNumbers, sendSMS } from '@/actions/voice'
+// Imports diretos (não o barrel @/actions/voice) — ver comentário em
+// CallDialerModal.tsx (issue #12/#13).
+import { listOrgNumbers } from '@/actions/voice-numbers'
+import { sendSMS } from '@/actions/voice-sms'
 
 interface SmsTarget { contatoId?: string; name: string; phone: string }
 

@@ -13,7 +13,13 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ResponsiveSelect } from '@/components/ui/responsive-select'
 import { PhoneCall } from 'lucide-react'
-import { listOrgNumbers, listVoiceAgents, startCall } from '@/actions/voice'
+// Imports diretos dos módulos específicos (não o barrel @/actions/voice) —
+// issue #12/#13: este componente é montado incondicionalmente pelo layout
+// autenticado, então qualquer módulo alcançável a partir daqui entra no
+// bundle de toda página do CRM.
+import { listOrgNumbers } from '@/actions/voice-numbers'
+import { listVoiceAgents } from '@/actions/voice-agents'
+import { startCall } from '@/actions/voice-calls'
 import { ASSISTED_CALL_LANGUAGES } from '@/lib/voice/assisted-languages'
 import { useActiveCall } from './ActiveCallProvider'
 
