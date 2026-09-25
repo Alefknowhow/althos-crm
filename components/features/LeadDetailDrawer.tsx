@@ -17,6 +17,7 @@ import LeadDataTab, {
 
 import LeadTimeline from './lead-panel/LeadTimeline'
 import LeadTasksTab from './lead-panel/LeadTasksTab'
+import LeadCatalogItemsTab from './lead-panel/LeadCatalogItemsTab'
 
 type Member = { id: string; name: string; email: string }
 
@@ -158,10 +159,11 @@ export default function LeadDetailDrawer({
               />
 
               <Tabs defaultValue="timeline" className="w-full border-t pt-4">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="automations">Automações</TabsTrigger>
                   <TabsTrigger value="tasks">Tarefas</TabsTrigger>
+                  <TabsTrigger value="catalog">Catálogo</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="timeline" className="mt-4 space-y-4">
@@ -170,6 +172,10 @@ export default function LeadDetailDrawer({
 
                 <TabsContent value="tasks" className="mt-4">
                   <LeadTasksTab key={lead.id} orgSlug={orgSlug} leadId={lead.id} leadName={lead.name} members={leadDataMembers} />
+                </TabsContent>
+
+                <TabsContent value="catalog" className="mt-4">
+                  <LeadCatalogItemsTab key={lead.id} orgSlug={orgSlug} leadId={lead.id} />
                 </TabsContent>
 
                 <TabsContent value="automations" className="mt-4 space-y-4">
