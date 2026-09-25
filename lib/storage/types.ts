@@ -20,6 +20,7 @@ export type StorageCategory =
   | 'documents'
   | 'avatars'
   | 'exports'
+  | 'library'
 
 export type UploadInput = {
   organizationId: string

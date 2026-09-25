@@ -16,6 +16,7 @@ import ClientIntelligenceTab from '@/components/features/agencias-trafego/Client
 import ClientTrackingTab from '@/components/features/agencias-trafego/ClientTrackingTab'
 import ClientFunnelCard from '@/components/features/agencias-trafego/ClientFunnelCard'
 import CampaignCreativesSection from '@/components/features/agencias-trafego/CampaignCreativesSection'
+import LibraryAssetsSection from '@/components/features/agencias-trafego/LibraryAssetsSection'
 import ClientReportsTab from '@/components/features/agencias-trafego/ClientReportsTab'
 import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
 import MediaPlanBuilder from '@/components/features/agencias-trafego/MediaPlanBuilder'
@@ -27,6 +28,7 @@ import type { ProjectTemplateRow } from '@/actions/project-templates'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import type { Creative } from '@/actions/campaign-creatives'
+import type { LibraryAssetChain } from '@/actions/library-assets'
 import type { TrafficActivity } from '@/actions/trafego-history'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import type { MetaAdAccountOption } from '@/lib/meta/ads-oauth'
@@ -57,7 +59,7 @@ type SaleRow = { id: string; sale_date: string | null; amount_cents: number | nu
  * (MarketingStrategistDock), disponível em qualquer seção.
  */
 export default function ClientDetailShell({
-  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, sales, activities,
+  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, libraryChains, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
@@ -75,6 +77,7 @@ export default function ClientDetailShell({
   accounts: AdAccount[]
   campaigns: CampaignRow[]
   creatives: Creative[]
+  libraryChains: LibraryAssetChain[]
   sales: SaleRow[]
   activities: TrafficActivity[]
   performanceCurrent: ClientPerformanceSummary
@@ -114,6 +117,7 @@ export default function ClientDetailShell({
     { key: 'estrategia', label: 'Estratégia' },
     { key: 'campanhas', label: 'Estrutura de Campanhas' },
     { key: 'criativos', label: 'Criativos' },
+    { key: 'biblioteca', label: 'Biblioteca' },
     { key: 'conversoes', label: 'Conversões' },
     { key: 'inteligencia', label: 'Inteligência' },
     { key: 'projetos', label: 'Projetos' },
@@ -188,6 +192,10 @@ export default function ClientDetailShell({
 
         <TabsContent value="criativos">
           <CampaignCreativesSection orgSlug={orgSlug} contatoId={clientId} creatives={creatives} />
+        </TabsContent>
+
+        <TabsContent value="biblioteca">
+          <LibraryAssetsSection orgSlug={orgSlug} contatoId={clientId} chains={libraryChains} />
         </TabsContent>
 
         <TabsContent value="conversoes">

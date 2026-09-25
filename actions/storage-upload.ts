@@ -18,6 +18,7 @@ const ALLOWED_MIME_BY_CATEGORY: Record<StorageCategory, string[]> = {
   documents: ['application/pdf', 'image/jpeg', 'image/png'],
   avatars: ['image/jpeg', 'image/png', 'image/webp'],
   exports: ['text/csv', 'application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  library: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm', 'application/pdf'],
 }
 
 /**
