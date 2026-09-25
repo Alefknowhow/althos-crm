@@ -6,15 +6,17 @@
  * gravado como snapshot no momento em que o item é adicionado — mudar o
  * preço no Catálogo depois não altera o que já foi selecionado aqui.
  *
- * "Ao ganhar, esses itens podem originar a Venda" (texto da issue) ainda não
- * tem pra onde ir — o módulo de Vendas (#20) não existe. Por isso o único
- * efeito colateral aqui é opcional e manual: "usar total como valor do
- * negócio" grava em contatos.value_cents via updateLeadValue, o mesmo campo
- * que o board da Pipeline já usa — nada é sincronizado automaticamente.
+ * "Ao ganhar, esses itens podem originar a Venda" (issue #21) — "Registrar
+ * venda" cria a Venda (issue #20) com snapshot próprio dos itens
+ * (sale_items), sem depender de mudar de etapa no board (é uma ação
+ * explícita do usuário, não um efeito colateral de mover o card). "Usar
+ * como valor do negócio" continua manual e independente — grava só em
+ * contatos.value_cents via updateLeadValue.
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Loader2, Plus, X, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { ActionButton as Button } from '@/components/features/ActionButton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -24,6 +26,7 @@ import {
 } from '@/actions/contato-catalog-items'
 import { listProducts } from '@/actions/products'
 import { updateLeadValue } from '@/actions/contatos'
+import { createSaleFromContatoCatalogItems } from '@/actions/sales-from-opportunity'
 import { formatCurrency } from '@/lib/utils'
 
 type CatalogItem = {
@@ -35,10 +38,12 @@ type CatalogItem = {
 }
 
 export default function LeadCatalogItemsTab({ orgSlug, leadId }: { orgSlug: string; leadId: string }) {
+  const router = useRouter()
   const [items, setItems] = useState<CatalogItem[] | null>(null)
   const [products, setProducts] = useState<{ id: string; name: string; price_cents: number }[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [adding, setAdding] = useState(false)
+  const [registeringSale, setRegisteringSale] = useState(false)
   const [revision, setRevision] = useState(0)
 
   useEffect(() => {
@@ -88,6 +93,15 @@ export default function LeadCatalogItemsTab({ orgSlug, leadId }: { orgSlug: stri
     toast.success('Valor do negócio atualizado')
   }
 
+  async function registerSale() {
+    setRegisteringSale(true)
+    const res = await createSaleFromContatoCatalogItems(orgSlug, leadId)
+    setRegisteringSale(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Venda registrada com os itens desta oportunidade')
+    router.push(`/app/${orgSlug}/vendas`)
+  }
+
   if (items === null) {
     return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
   }
@@ -132,9 +146,14 @@ export default function LeadCatalogItemsTab({ orgSlug, leadId }: { orgSlug: stri
 
           <div className="flex items-center justify-between border-t pt-2">
             <p className="text-sm font-semibold">Total: {formatCurrency(total)}</p>
-            <Button type="button" size="sm" variant="outline" onClick={useAsDealValue}>
-              Usar como valor do negócio
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={useAsDealValue}>
+                Usar como valor do negócio
+              </Button>
+              <Button type="button" size="sm" onClick={registerSale} disabled={registeringSale}>
+                <ShoppingCart className="h-4 w-4 mr-1" /> Registrar venda
+              </Button>
+            </div>
           </div>
         </div>
       )}

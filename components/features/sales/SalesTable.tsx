@@ -100,8 +100,10 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                   {s.sale_date ? new Date(s.sale_date + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium text-sm">{s.products?.name || '—'}</div>
-                  {s.quantity > 1 && (
+                  <div className="font-medium text-sm">
+                    {s.sale_items?.length > 1 ? `${s.sale_items.length} itens` : (s.products?.name || '—')}
+                  </div>
+                  {s.sale_items?.length <= 1 && s.quantity > 1 && (
                     <div className="text-xs text-muted-foreground">×{s.quantity}</div>
                   )}
                   {/* Mobile-only inline lead + status (those columns are hidden). */}
