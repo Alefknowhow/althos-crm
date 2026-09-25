@@ -99,7 +99,10 @@ Premissa corrigida: legado vazio → **não há migração de dados**; o trabalh
 
 ### B.5 Envio, status e reenvio
 - Reenvio do link de assinatura: `sendGlobalContractLinkByEmail(orgSlug, contractId, signerId?)` (padrão `getResend`/`clientEmailFrom`) e `...ByWhatsapp` (achar a conversa do contato: `whatsapp_conversations where contato_id` mais recente; se não houver, desabilitar o botão com motivo). Botões no `ContractSignersPanel` por signatário (cada signatário tem seu link na Autentique — **verificar** se `createAutentiqueDocument` devolve link por signatário; hoje só o do primeiro é salvo em `contracts.signature_link`. Se devolver, salvar por signatário: coluna `contract_signers.signature_link`).
-- Status `rejected`/`viewed`: estender `app/api/webhooks/autentique/route.ts` (ramo global `handleGlobalContractSigned` → generalizar para `handleGlobalContractEvent`) para eventos de recusa/visualização da Autentique — **conferir os nomes reais de eventos** no payload já tratado (hoje só `signature.accepted`). Atualizar `contract_signers.status` e `contracts.status` + `contract_events`. `expired`: cron diário marca `sent` há > N dias (config por org, default 30) como `expired` — só se o usuário quiser; **❓ perguntar** (default: não implementar expiração automática).
+- Status `rejected`/`viewed`: estender `app/api/webhooks/autentique/route.ts` (ramo global `handleGlobalContractSigned` → generalizar para `handleGlobalContractEvent`) para eventos de recusa/visualização da Autentique — **conferir os nomes reais de eventos** no payload já tratado (hoje só `signature.accepted`). Atualizar `contract_signers.status` e `contracts.status` + `contract_events`. `expired`: **decidido pelo usuário (2026-09-25): NÃO expira automaticamente.** Em vez disso, gestão manual:
+  - **Excluir** (nova action `deleteContract`): só para contrato **nunca enviado** (`status in ('draft','ready')` e sem `autentique_document_id`) — apaga contrato + signatários + eventos (FKs já têm `on delete cascade`). Confirmação na UI.
+  - **Cancelar** (já existe `cancelContract`): para contrato enviado e ainda não assinado. Se houver `autentique_document_id`, também tentar cancelar/remover o documento na Autentique (conferir se `lib/autentique.ts` tem mutation de delete; se não tiver, adicionar a mutation GraphQL `deleteDocument` — best-effort, não bloquear o cancelamento local se falhar, registrar em `contract_events`).
+  - Contrato **assinado**: não pode ser excluído nem cancelado (registro legal) — UI esconde as duas ações e a action recusa no servidor.
 - Painel de verificação: a aba Integração já lista eventos; adicionar filtro por status e por contrato.
 
 ### B.6 Eventos de Automação
@@ -114,7 +117,7 @@ Premissa corrigida: legado vazio → **não há migração de dados**; o trabalh
 ## Fase C — #59 item 1: Vouchers reorganizados
 
 ### C.1 Referência visual
-- **❓ CHECKPOINT**: ler a issue **#11** (origem) com `mcp__github__issue_read` e abrir as imagens anexadas (referência visual exigida pelo critério de aceite). Se as imagens não forem acessíveis pela sessão, pedir ao usuário que cole a referência.
+- **❓ CHECKPOINT**: a issue **#11** tem 3 imagens (anexos `github.com/user-attachments/...`): **1ª = aba Produtos** (já aplicada), **2ª (945×406) = referência de Vouchers** (esta fase), **3ª = guia geral da tela de Reserva** (nunca aplicada — fora deste plano, anotar como follow-up). Tentar abrir a 2ª; se a sessão não conseguir (anexo exige auth), **pedir ao usuário que cole o print da 2ª imagem** — ele já foi avisado disso (2026-09-25).
 
 ### C.2 Modelo de dados (sem tabela nova)
 - Estender o item do jsonb `travel_sales.vouchers` de `{name,url}` para `{ id, name, url, product_id?, kind?: 'hotel'|'aereo'|'transfer'|'passeio'|'seguro'|'outro', status?: 'recebido'|'conferido'|'enviado_cliente', uploaded_at?, source?: 'upload'|'agente' }` — todos opcionais, **retrocompatível** (itens antigos sem os campos continuam válidos). `id` gerado no client (`crypto.randomUUID()`) ao editar/criar; itens legados ganham `id` na primeira edição.
@@ -156,7 +159,13 @@ Premissa corrigida: legado vazio → **não há migração de dados**; o trabalh
 - **Retomada**: handler de `automation/agent.result` retoma o run pelo edge correspondente ao `result_type` (seguir exatamente como o grafo retoma após `wait_for_reply`).
 - **Timeout**: cron a cada 15 min marca sessões expiradas `timeout` e retoma pelo edge `timeout`; libera `assigned_agent_definition_id` da conversa.
 - **Proteção**: tudo atrás de env `AUTOMATION_AGENT_WAIT_ENABLED` — sem a env, o step não aparece no builder e o pipeline nunca entra no ramo novo. Com 0 `agent_definitions` em produção, o risco real é zero mesmo ligado, mas a env evita surpresa.
-- **⛔ BLOQUEADO para liberação**: teste ponta-a-ponta exige número de WhatsApp de teste da org (webhook real → resposta → retomada). Implementar, validar com testes unitários do roteamento de edges e do estado da sessão, e **não** ligar a env em produção sem o usuário executar o roteiro de teste (escrever o roteiro no comentário da issue).
+- **Teste ponta-a-ponta**: o usuário autorizou usar o **celular pessoal dele** como o lado "lead" (número informado no chat em 2026-09-25 — **não versionar número pessoal no repo/issue**; pedir de novo na sessão se não estiver no contexto). Roteiro:
+  1. Implementar e validar com testes unitários (roteamento de edges, estado da sessão, timeout).
+  2. Ligar `AUTOMATION_AGENT_WAIT_ENABLED` **só no preview/ambiente de teste** se houver; se só existir produção, ligar com o usuário ciente (risco baixo: 0 agent_definitions em produção, e só a automação de teste usa o step).
+  3. Na org do usuário (WhatsApp Business já conectado): criar um Agent Definition de teste com objetivo simples ("perguntar se o cliente quer confirmar a reunião; emitir resultado `confirmado` ou `recusado`"), uma automação com gatilho manual/tag → step "Aguardar resultado do Agente" → edges `confirmado`/`recusado`/`timeout` aplicando tags diferentes.
+  4. Contato de teste com o número do usuário; disparar a automação; o usuário responde pelo celular; conferir: sessão `completed`, `result_type` correto, run retomado pelo edge certo, tag aplicada, e que outras conversas continuam no atendente padrão.
+  5. Testar timeout com `expires_at` curto (ex. 2 min).
+  - A sessão **não consegue enviar/receber WhatsApp sozinha** — o passo 4 depende do usuário respondendo em tempo real; combinar o momento com ele.
 
 ### D.5 Fechamento
 - Comentar no #57 com o roteiro de teste manual do D.4. Fechar o #57 **somente** após o usuário confirmar o teste; senão deixar aberto com "aguardando QA manual".
