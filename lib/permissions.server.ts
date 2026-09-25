@@ -2,8 +2,28 @@
 // DO NOT import this file from Client Components.
 // For pure types/helpers usable in both client and server, use lib/permissions.ts
 
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { canAccess, type MemberRole, type PermissionKey, type Permissions } from '@/lib/permissions'
+
+/**
+ * Memoizado por requisição (React cache), por org+user: o layout autenticado
+ * e a Sidebar buscavam a mesma linha de `memberships` (role/permissions) cada
+ * um por conta própria na mesma renderização (achado da auditoria de compute
+ * da issue #12). Não substitui checkMemberPermission() — aquela é pra
+ * Server Actions decidirem allow/deny com motivo; esta é só o dado bruto de
+ * role/permissions pra UI decidir o que mostrar (sidebar, gates de módulo).
+ */
+export const getMembershipRolePermissions = cache(async (orgId: string, userId: string) => {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('memberships')
+    .select('role, permissions')
+    .eq('organization_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data as { role: MemberRole; permissions: Permissions | null } | null
+})
 
 /**
  * Verifica se o usuário autenticado tem permissão para acessar um módulo.

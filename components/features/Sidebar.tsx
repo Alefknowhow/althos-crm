@@ -8,6 +8,7 @@ import { SidebarBrandSignature } from './SidebarBrandSignature'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { getObjectSignedUrl } from '@/actions/storage'
 import { checkFeatureAccess } from '@/lib/plans/server'
+import { getMembershipRolePermissions } from '@/lib/permissions.server'
 import { deriveInitials } from '@/lib/organization/initials'
 import { Wallet, FileText } from 'lucide-react'
 import { SidebarNavVendas } from './SidebarNavVendas'
@@ -51,14 +52,10 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   // disparam JUNTAS em vez de em cascata: membership, tarefas vencidas,
   // conversas não lidas e os 3 checks de plano. Colapsa ~5 round-trips em 1 fase.
   const [membershipRes, overdueRes, convsRes, socialConvsRes, planChecks, orgsRes] = await Promise.all([
-    user
-      ? supabase
-          .from('memberships')
-          .select('role, permissions')
-          .eq('organization_id', org.id)
-          .eq('user_id', user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    // Memoizado por requisição (issue #12) — o layout autenticado já busca
+    // essa mesma linha (role/permissions); cache() por org+user colapsa em 1
+    // query em vez de rodar de novo aqui.
+    user ? getMembershipRolePermissions(org.id, user.id) : Promise.resolve(null),
     supabase
       .from('tasks')
       .select('id', { count: 'exact', head: true })
@@ -98,7 +95,7 @@ export default async function Sidebar({ orgSlug }: { orgSlug: string }) {
   let userRole:        MemberRole  = 'member'
   let userPermissions: Permissions = {}
   let isOwnerOrAdmin = false
-  const membership = (membershipRes as { data: { role: string; permissions: Permissions } | null }).data
+  const membership = membershipRes as { role: string; permissions: Permissions } | null
   if (membership) {
     userRole        = membership.role as MemberRole
     userPermissions = (membership.permissions ?? {}) as Permissions

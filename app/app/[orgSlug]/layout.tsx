@@ -1,6 +1,5 @@
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import Sidebar from '@/components/features/Sidebar'
-import { createClient } from '@/lib/supabase/server'
 import ImpersonationBanner from '@/components/features/dashboard/ImpersonationBanner'
 import NotificationBell from '@/components/features/NotificationBell'
 import { AiCreditsBadge } from '@/components/ai-credits-badge'
@@ -25,7 +24,8 @@ import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { CopilotProvider } from '@/components/features/CopilotProvider'
 import OrchestratorPalette from '@/components/features/OrchestratorPalette'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
-import { checkFeatureAccess, getAccountIdForOrgSlug } from '@/lib/plans/server'
+import { checkFeatureAccess } from '@/lib/plans/server'
+import { getMembershipRolePermissions } from '@/lib/permissions.server'
 import { CallDialerProvider } from '@/components/features/voice/CallDialerModal'
 import { SmsComposeProvider } from '@/components/features/voice/SmsComposeModal'
 import { ActiveCallProvider } from '@/components/features/voice/ActiveCallProvider'
@@ -61,17 +61,10 @@ export default async function OrgLayout({
     billing_managed_externally: orgFull.billing_managed_externally ?? null,
   })
 
-  const supabase = createClient()
-
   // Copiloto IA — botão flutuante presente em toda tela do app (não só no
   // dashboard). Gate pela permissão 'insights'; o plano/créditos é checado
   // por dentro do próprio copiloto (getCopilotInit / rota de chat).
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('role, permissions')
-    .eq('organization_id', org.id)
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const membership = await getMembershipRolePermissions(org.id, user.id)
   const canUseCopilot = membership
     ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'insights')
     : false
@@ -82,7 +75,10 @@ export default async function OrgLayout({
   const hasVoicePermission = membership
     ? canAccess(membership.role as MemberRole, (membership.permissions ?? {}) as Permissions, 'voice')
     : false
-  const voiceAccountId = hasVoicePermission ? await getAccountIdForOrgSlug(params.orgSlug) : null
+  // `org` já veio com `select('*')` de getCurrentOrganization() — reaproveita
+  // org.account_id em vez de rebuscar organizations.account_id pelo slug
+  // (issue #12: query redundante na mesma tabela/chave em toda navegação).
+  const voiceAccountId = hasVoicePermission ? (orgFull.account_id as string | null) : null
   const canUseVoice = hasVoicePermission && voiceAccountId ? await checkFeatureAccess(voiceAccountId, 'voice') : false
 
   const userName = (user.user_metadata as any)?.full_name as string | undefined

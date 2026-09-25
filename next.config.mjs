@@ -247,6 +247,21 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
 
   experimental: {
+    // Issue #12 (auditoria de compute/bundle): quase todas as ~135 Page
+    // Functions reportavam o mesmo bundle de ~7,83 MB porque o único layout
+    // autenticado (app/app/[orgSlug]/layout.tsx) monta incondicionalmente os
+    // providers de Voice (Twilio) e chama a action de Storage (AWS SDK) —
+    // e como esses módulos são importados via barrel (actions/voice.ts,
+    // actions/storage.ts) em vez do símbolo específico, o bundler inclui o
+    // SDK inteiro no grafo de toda página que herda o layout, mesmo quando a
+    // org não usa voz/upload. Marcar esses SDKs como "external" faz o
+    // Next tratá-los como dependência do runtime Node em vez de inline-ar
+    // no bundle da função — reduz o tamanho reportado sem mudar
+    // comportamento (mesmo runtime Node.js na Vercel, só empacotamento
+    // diferente). Não resolve a causa raiz (import via barrel) — só reduz
+    // o sintoma medido pela Vercel; a raiz fica documentada em
+    // docs/audit/2026-09-compute-bundle-issue-12.md pra correção na issue #13.
+    serverComponentsExternalPackages: ['twilio', '@aws-sdk/s3-request-presigner', '@anthropic-ai/sdk', '@google/genai'],
     // Client-side Router Cache retention. This keeps already-visited pages
     // "warm" in the browser so navigating back to them is instant — WITHOUT
     // any new server render or database query. It is pure client-side reuse,
