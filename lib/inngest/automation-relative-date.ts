@@ -74,10 +74,11 @@ export const automationRelativeDateFn = inngest.createFunction(
       id: string
       organization_id: string
       trigger_config: RelativeDateTriggerConfig
+      current_version_id: string | null
     }> = await step.run('fetch-relative-date-automations', async () => {
       const { data } = await admin
         .from('automations')
-        .select('id, organization_id, trigger_config')
+        .select('id, organization_id, trigger_config, current_version_id')
         .eq('trigger_type', 'date.relative')
         .eq('is_active', true)
       return data || []
@@ -163,6 +164,7 @@ export const automationRelativeDateFn = inngest.createFunction(
           const { data: run, error } = await admin.from('automation_runs').insert({
             organization_id: auto.organization_id,
             automation_id: auto.id,
+            automation_version_id: auto.current_version_id ?? null,
             contato_id: row.contato_id,
             status: 'running',
             current_step: 0,

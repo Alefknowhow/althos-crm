@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
+import { snapshotAutomationVersion } from '@/lib/automations/snapshot-version'
 
 export async function getAutomations(orgSlug: string) {
   const user = await requireAuth()
@@ -123,6 +124,14 @@ export async function createAutomation(orgSlug: string, payload: any) {
     console.error('createAutomation insert error:', error)
     throw new Error(error.message || 'Erro ao criar automação')
   }
+  await snapshotAutomationVersion(admin, {
+    id: data.id,
+    organization_id: org.id,
+    trigger_type: data.trigger_type,
+    trigger_config: data.trigger_config,
+    steps: data.steps,
+    flow: data.flow,
+  })
   revalidatePath(`/app/${orgSlug}/automacoes`)
   return data
 }
@@ -141,17 +150,28 @@ export async function updateAutomation(orgSlug: string, id: string, payload: any
   if (payload.steps !== undefined) allowed.steps = payload.steps
   if (payload.flow !== undefined) allowed.flow = payload.flow
 
+  const definitionChanged = ['trigger_type', 'trigger_config', 'steps', 'flow'].some(k => payload[k] !== undefined)
+
   const admin = createAdminClient()
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from('automations')
     .update(allowed)
     .eq('id', id)
     .eq('organization_id', org.id)
+    .select('id, organization_id, trigger_type, trigger_config, steps, flow')
+    .maybeSingle()
 
   if (error) {
     console.error('updateAutomation error:', error)
     return { ok: false, error: error.message || 'Erro ao salvar automação' }
   }
+
+  // Só cria uma nova versão (histórico imutável) quando a DEFINIÇÃO mudou —
+  // renomear ou pausar/ativar não gera versão nova, só edição do fluxo em si.
+  if (definitionChanged && updated) {
+    await snapshotAutomationVersion(admin, updated)
+  }
+
   revalidatePath(`/app/${orgSlug}/automacoes`)
   revalidatePath(`/app/${orgSlug}/automacoes/${id}`)
   return { ok: true }
@@ -236,6 +256,14 @@ export async function duplicateAutomation(orgSlug: string, id: string) {
     .maybeSingle()
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao duplicar automação' }
+  await snapshotAutomationVersion(admin, {
+    id: copy.id,
+    organization_id: org.id,
+    trigger_type: copy.trigger_type,
+    trigger_config: copy.trigger_config,
+    steps: copy.steps,
+    flow: copy.flow,
+  })
   revalidatePath(`/app/${orgSlug}/automacoes`)
   return { ok: true as const, automation: copy }
 }

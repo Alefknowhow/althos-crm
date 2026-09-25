@@ -57,6 +57,7 @@ async function handleAutomationEvent({ event, step }: { event: any; step: any })
         const { data: run, error } = await supabase.from('automation_runs').insert({
           organization_id: orgId,
           automation_id: auto.id,
+          automation_version_id: auto.current_version_id ?? null,
           contato_id: leadId,
           status: 'running',
           current_step: 0,
@@ -167,7 +168,7 @@ export const executeAutomationRun = inngest.createFunction(
 
     const { data: run, error: runError } = await supabase
       .from('automation_runs')
-      .select('*, automations(*), contatos(*), organizations(*)')
+      .select('*, automations(*), contatos(*), organizations(*), automation_versions(steps, flow)')
       .eq('id', runId)
       .maybeSingle()
 
@@ -177,8 +178,13 @@ export const executeAutomationRun = inngest.createFunction(
     const { automations: auto, contatos: lead, organizations: orgConfig, organization_id: orgId } = run as any
     if (!auto || !lead) return
 
-    const steps = auto.steps || []
-    const flow: AutomationFlow | undefined = auto.flow
+    // Versionamento (issue #18 §18): se o run tem uma versão pinada, executa
+    // A DEFINIÇÃO CONGELADA daquele momento — editar a automação enquanto o
+    // run está em andamento não muda o que ele executa. Sem versão (runs
+    // criados antes desta migration), cai no live `automations.steps/flow`.
+    const pinnedVersion = (run as any).automation_versions
+    const steps = pinnedVersion?.steps ?? auto.steps ?? []
+    const flow: AutomationFlow | undefined = pinnedVersion?.flow ?? auto.flow
 
     // Helper: write a row to automation_step_logs (best-effort, never throws).
     async function logStep(
@@ -216,7 +222,7 @@ export const executeAutomationRun = inngest.createFunction(
     // Sem `flow`, cai no array `steps` linear de sempre (comportamento
     // idêntico ao de antes da Fase 3, nenhuma automação existente muda).
     if (flow) {
-      await runAutomationGraph({ step, supabase, runId, run, auto, orgId, orgConfig, lead, flow, logStep })
+      await runAutomationGraph({ step, supabase, runId, run, auto: { ...auto, steps, flow }, orgId, orgConfig, lead, flow, logStep })
       return
     }
 
