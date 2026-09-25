@@ -134,7 +134,21 @@ Arquivos atuais (em `components/features/proposals/`): `TravelSalesViewSaleEdito
 ### C.2 Ordem e shell das abas da Reserva
 - Nova ordem (numeração da referência): **Dados da reserva · Produtos · Viajantes · Vouchers · Tarefas** (Tarefas não aparece na referência → fica por último, mantida).
 - Trocar para `ModuleTabs`. Manter contagem em Viajantes (ex.: "Viajantes 4") como texto discreto.
-- Referência mostra cada aba como **seção em card branco arredondado** (`rounded-2xl border bg-card p-4`) com título pequeno em caixa-alta cinza (`text-xs font-semibold uppercase tracking-wide text-muted-foreground`), ex.: "PRODUTOS (HABILITADOS CONFORME A ABA 1)" — o "habilitados conforme a Aba 1" indica que os tipos de produto disponíveis dependem do que foi marcado em Dados: **conferir** se isso já existe (`services`/`included_items` em `travel_sales`); se existir, filtrar os tipos oferecidos no "+ Adicionar produto"; se não existir, **não inventar regra** — anotar.
+- Referência mostra cada aba como **seção em card branco arredondado** (`rounded-2xl border bg-card p-4`) com título pequeno em caixa-alta cinza (`text-xs font-semibold uppercase tracking-wide text-muted-foreground`), ex.: "PRODUTOS (HABILITADOS CONFORME A ABA 1)".
+
+### C.2b Regra "produtos habilitados conforme Dados da reserva" (aprovada pelo usuário em 2026-09-25)
+Base existente: na aba Dados há o checklist **"O que está incluso"** → `travel_sales.included_items` (string[]; chaves de `INCLUDED_ITEMS` em `components/features/proposals/TravelSalesViewShared.tsx`), além do legado `travel_sales.services` (`transfer`/`insurance`/`car_rental`). Produtos: `sale_products.kind` ∈ `aereo, hospedagem, transfer, passeio, cruzeiro, seguro, ingresso, veiculo, outro` (migration 0198).
+- **Mapa central** em `lib/travel/product-types.ts` (mesmo arquivo do mapa de ícone/cor/label da C.3):
+  `voos→aereo · hospedagem→hospedagem · transfer→transfer · cruzeiros→cruzeiro · seguro→seguro · passeios→passeio · carros→veiculo · ingressos→ingresso · servicos→outro`; legado `services`: `transfer→transfer · insurance→seguro · car_rental→veiculo`.
+- **Normalização na leitura** (produção tem itens em texto livre de versões antigas — ex.: "Hospedagem", "Seguro viagem", "Aéreo ida e volta", "Transfer aeroporto ⇄ hotel", "Taxas e impostos"): função pura `normalizeIncludedKeys(included, services)` que reconhece as chaves e os rótulos conhecidos sem diferenciar maiúsculas/acentos (`Aéreo…/Voo…`→voos, `Hospedagem`→hospedagem, `Transfer…/Traslado`→transfer, `Seguro…`→seguro, `Cruzeiro…`→cruzeiros, `Passeio…`→passeios, `Ingresso…`→ingressos, `Locação/Carro…`→carros). Texto livre não reconhecido é **ignorado pela regra e preservado no banco** (é exibido em outros lugares, ex. proposta pública). **Nunca reescrever `included_items` existente por causa da normalização.**
+- `enabledProductKinds(included, services): Set<Kind>` = kinds mapeados das chaves normalizadas. Testes Vitest: chaves novas, rótulos legados, texto livre ignorado, lista vazia.
+- **Comportamento na aba Produtos:**
+  1. "+ Adicionar produto" lista **habilitados primeiro**; os não habilitados aparecem abaixo, esmaecidos, com ação **"Habilitar em Dados"** que marca o item correspondente em `included_items` (mesma `toggleIncluded` da aba Dados, salvando a reserva) e já cria o card — evita obrigar o usuário a trocar de aba.
+  2. **Nenhum item marcado em Dados** (reservas antigas/novas vazias): todos os tipos ficam disponíveis + aviso discreto "Marque em Dados da reserva o que está incluso para filtrar os produtos" com link que troca para a aba Dados. Não bloquear.
+  3. **Produtos já existentes nunca somem** nem ficam somente-leitura por causa da regra — mesmo que o tipo não esteja marcado (mostrar um aviso pequeno no card: "Tipo não marcado como incluso em Dados — Marcar").
+- **Sincronização inversa** (consistência): ao criar produto de um tipo não marcado por qualquer caminho (manual após "Habilitar", OCR do `VoucherExtractDialog`, IA/agente `import_travel_voucher` se criar produto — grep os pontos que inserem em `sale_products`), marcar automaticamente o item em `included_items` no servidor (action que insere o produto faz o `update` do array com a chave canônica, sem duplicar e sem remover textos livres). Centralizar em um helper `ensureIncludedForProductKind(supabase, saleId, kind)`.
+- **Desmarcar** um item em Dados que tem produtos daquele tipo: confirmar "Existem N produto(s) de Hospedagem nesta reserva — eles continuam salvos. Desmarcar mesmo assim?"; nunca apagar produto.
+- `outro` (Serviços): habilitado pela chave `servicos`; se nada estiver marcado, cai na regra 2.
 
 ### C.3 Aba Produtos (layout da referência, campos atuais)
 - Um **card por produto** (`rounded-xl bg-muted/50 p-4`), empilhados com gap, dentro do card da seção.
@@ -230,7 +244,7 @@ Arquivos atuais (em `components/features/proposals/`): `TravelSalesViewSaleEdito
 ---
 
 ## Ordem de commits sugerida
-A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (fecha #60) · C.1 (ModuleTabs) · C.2 · C.3 · C.4 · C.5 · C.1b (adoção de ModuleTabs nos outros módulos) · (fecha #59) · D.1 · D.2 · D.3 · E.1 · E.2 · E.3 · (fecha #58) · D.4 (último; #57 aguarda QA).
+A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (fecha #60) · C.1 (ModuleTabs) · C.2 · C.2b (regra de habilitação) · C.3 · C.4 · C.5 · C.1b (adoção de ModuleTabs nos outros módulos) · (fecha #59) · D.1 · D.2 · D.3 · E.1 · E.2 · E.3 · (fecha #58) · D.4 (último; #57 aguarda QA).
 
 ## Riscos
 - **B.3/B.4** mexem no fluxo de contrato de Reservas em produção (checklist `contrato_gerado_at`/`contrato_assinado_at`) — por isso sincronizar esses timestamps a partir do módulo global antes de remover o fluxo antigo, e checkpoint de contagem imediatamente antes.
