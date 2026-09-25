@@ -189,7 +189,7 @@ export default function ClientDetailShell({
         </TabsContent>
 
         <TabsContent value="biblioteca">
-          <LibraryAssetsSection orgSlug={orgSlug} contatoId={clientId} chains={libraryChains} />
+          <LibraryAssetsSection orgSlug={orgSlug} contatoId={clientId} chains={libraryChains} campaigns={campaigns.map(c => ({ id: c.id, name: c.name }))} />
         </TabsContent>
 
         <TabsContent value="conversoes">

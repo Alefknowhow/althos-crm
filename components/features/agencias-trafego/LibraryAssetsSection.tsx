@@ -14,8 +14,8 @@ import UploadLibraryAssetDialog from './UploadLibraryAssetDialog'
  *  aprovados (já pode ir pro ar). Substitui a antiga aba "Criativos"
  *  (campaign_creatives) — tudo fica dentro da Biblioteca agora. */
 export default function LibraryAssetsSection({
-  orgSlug, contatoId, chains,
-}: { orgSlug: string; contatoId: string; chains: LibraryAssetChain[] }) {
+  orgSlug, contatoId, chains, campaigns,
+}: { orgSlug: string; contatoId: string; chains: LibraryAssetChain[]; campaigns: { id: string; name: string }[] }) {
   const router = useRouter()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [versionTarget, setVersionTarget] = useState<{ rootAssetId: string; latestId: string } | null>(null)
@@ -51,13 +51,13 @@ export default function LibraryAssetsSection({
         </TabsList>
 
         <TabsContent value="bruto" className="mt-3">
-          <AssetChainList orgSlug={orgSlug} chains={bruto} emptyLabel="Nenhum material bruto enviado ainda." onReload={reload} onNewVersion={handleNewVersion} />
+          <AssetChainList orgSlug={orgSlug} chains={bruto} emptyLabel="Nenhum material bruto enviado ainda." onReload={reload} onNewVersion={handleNewVersion} campaigns={campaigns} />
         </TabsContent>
         <TabsContent value="aguardando" className="mt-3">
-          <AssetChainList orgSlug={orgSlug} chains={aguardando} emptyLabel="Nenhum criativo aguardando aprovação." onReload={reload} onNewVersion={handleNewVersion} />
+          <AssetChainList orgSlug={orgSlug} chains={aguardando} emptyLabel="Nenhum criativo aguardando aprovação." onReload={reload} onNewVersion={handleNewVersion} campaigns={campaigns} />
         </TabsContent>
         <TabsContent value="aprovados" className="mt-3">
-          <AssetChainList orgSlug={orgSlug} chains={aprovados} emptyLabel="Nenhum criativo aprovado ainda." onReload={reload} onNewVersion={handleNewVersion} />
+          <AssetChainList orgSlug={orgSlug} chains={aprovados} emptyLabel="Nenhum criativo aprovado ainda." onReload={reload} onNewVersion={handleNewVersion} campaigns={campaigns} />
         </TabsContent>
       </Tabs>
 
@@ -67,6 +67,7 @@ export default function LibraryAssetsSection({
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         parentAssetId={versionTarget?.latestId || null}
+        campaigns={campaigns}
         onDone={reload}
       />
     </div>
@@ -74,13 +75,14 @@ export default function LibraryAssetsSection({
 }
 
 function AssetChainList({
-  orgSlug, chains, emptyLabel, onReload, onNewVersion,
+  orgSlug, chains, emptyLabel, onReload, onNewVersion, campaigns,
 }: {
   orgSlug: string
   chains: LibraryAssetChain[]
   emptyLabel: string
   onReload: () => void
   onNewVersion: (rootAssetId: string, latestId: string) => void
+  campaigns: { id: string; name: string }[]
 }) {
   if (chains.length === 0) {
     return (
@@ -98,6 +100,7 @@ function AssetChainList({
           chain={chain}
           onReload={onReload}
           onNewVersion={() => onNewVersion(chain.rootAssetId, chain.latest.id)}
+          campaignName={chain.latest.campaignId ? campaigns.find(c => c.id === chain.latest.campaignId)?.name : null}
         />
       ))}
     </div>

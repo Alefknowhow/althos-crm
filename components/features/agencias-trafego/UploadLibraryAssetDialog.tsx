@@ -25,19 +25,21 @@ function fileToBase64(file: File): Promise<string> {
  *  Quando a detecção falha (formato incomum), pede o enquadramento
  *  manualmente em vez de subir sem dimensão nenhuma. */
 export default function UploadLibraryAssetDialog({
-  orgSlug, contatoId, open, onOpenChange, parentAssetId, onDone,
+  orgSlug, contatoId, open, onOpenChange, parentAssetId, campaigns, onDone,
 }: {
   orgSlug: string
   contatoId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   parentAssetId: string | null
+  campaigns: { id: string; name: string }[]
   onDone: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [kind, setKind] = useState<'bruto' | 'produzido'>('bruto')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [campaignId, setCampaignId] = useState('')
   const [saving, setSaving] = useState(false)
   const [dims, setDims] = useState<{ width: number; height: number } | null>(null)
   const [needsOrientation, setNeedsOrientation] = useState(false)
@@ -65,12 +67,13 @@ export default function UploadLibraryAssetDialog({
       const base64 = await fileToBase64(file)
       const res = await uploadLibraryAsset(orgSlug, {
         contatoId, kind, title, description: description || null,
+        campaignId: campaignId || null,
         parentAssetId, filename: file.name, contentType: file.type, base64,
         width: resolvedDims?.width, height: resolvedDims?.height,
       })
       if (!res.ok) { toast.error(res.error); return }
       toast.success(parentAssetId ? 'Nova versão enviada.' : 'Material enviado.')
-      setTitle(''); setDescription(''); setDims(null); setNeedsOrientation(false)
+      setTitle(''); setDescription(''); setCampaignId(''); setDims(null); setNeedsOrientation(false)
       if (fileRef.current) fileRef.current.value = ''
       onOpenChange(false)
       onDone()
@@ -106,6 +109,18 @@ export default function UploadLibraryAssetDialog({
             <label className="text-xs font-medium">Descrição (opcional)</label>
             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} />
           </div>
+          {campaigns.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Campanha (opcional)</label>
+              <Select value={campaignId || '__none__'} onValueChange={v => setCampaignId(v === '__none__' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder="Sem campanha vinculada" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem campanha vinculada</SelectItem>
+                  {campaigns.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-xs font-medium">Arquivo</label>
             <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,application/pdf" className="text-xs" onChange={handleFileChange} />

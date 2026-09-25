@@ -13,6 +13,7 @@ import {
   type LibraryAssetChain,
 } from '@/actions/library-assets'
 import MediaPreview from '@/components/features/library/MediaPreview'
+import AssetVersionHistory, { VersionHistoryToggle } from '@/components/features/library/AssetVersionHistory'
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pendente: { label: 'Aguardando aprovação', cls: 'bg-amber-100 text-amber-700' },
@@ -29,9 +30,10 @@ function AssetIcon({ mimeType }: { mimeType: string | null }) {
 }
 
 export default function AssetChainCard({
-  orgSlug, chain, onReload, onNewVersion,
-}: { orgSlug: string; chain: LibraryAssetChain; onReload: () => void; onNewVersion: () => void }) {
+  orgSlug, chain, onReload, onNewVersion, campaignName,
+}: { orgSlug: string; chain: LibraryAssetChain; onReload: () => void; onNewVersion: () => void; campaignName?: string | null }) {
   const [expanded, setExpanded] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [commentBody, setCommentBody] = useState('')
   const [savingComment, setSavingComment] = useState(false)
   const [generatingLink, setGeneratingLink] = useState(false)
@@ -39,6 +41,11 @@ export default function AssetChainCard({
   const [email, setEmail] = useState('')
   const [sendingEmail, setSendingEmail] = useState(false)
   const status = STATUS_LABEL[chain.latest.status] || STATUS_LABEL.pendente
+  // No card resumido só marca "Final aprovada" quando a própria versão
+  // exibida (a mais recente) é a aprovada — quando existe uma versão mais
+  // nova ainda pendente por cima de uma aprovada, o selo aparece dentro do
+  // histórico de versões (AssetVersionHistory), não aqui no topo.
+  const isFinalApproved = chain.latest.status === 'aprovado'
 
   async function handleComment() {
     if (!commentBody.trim()) return
@@ -89,9 +96,13 @@ export default function AssetChainCard({
           <p className="text-xs text-muted-foreground">
             {KIND_LABEL[chain.latest.kind]} · v{chain.latest.version}
             {chain.versions.length > 1 && ` · ${chain.versions.length} versões`}
+            {campaignName && ` · ${campaignName}`}
           </p>
         </div>
-        <Badge className={cn('shrink-0 text-[10px]', status.cls)}>{status.label}</Badge>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge className={cn('text-[10px]', status.cls)}>{status.label}</Badge>
+          {isFinalApproved && <Badge className="text-[10px] bg-primary text-primary-foreground">Final aprovada</Badge>}
+        </div>
       </div>
 
       {chain.latest.signedUrl && (
@@ -119,11 +130,20 @@ export default function AssetChainCard({
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={handleDeleteLatest}>
           <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
         </Button>
+        {chain.versions.length > 1 && (
+          <VersionHistoryToggle count={chain.versions.length} open={historyOpen} onToggle={() => setHistoryOpen(!historyOpen)} />
+        )}
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs ml-auto" onClick={() => setExpanded(!expanded)}>
           {expanded ? <ChevronUp className="w-3.5 h-3.5 mr-1" /> : <ChevronDown className="w-3.5 h-3.5 mr-1" />}
           Comentários ({chain.comments.length})
         </Button>
       </div>
+
+      {historyOpen && (
+        <div className="border-t pt-2">
+          <AssetVersionHistory versions={chain.versions} />
+        </div>
+      )}
 
       {expanded && (
         <div className="space-y-2 border-t pt-2">
