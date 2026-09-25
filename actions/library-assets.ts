@@ -39,6 +39,8 @@ export type LibraryAsset = {
   createdAt: string
   signedUrl: string | null
   mimeType: string | null
+  width: number | null
+  height: number | null
 }
 
 /** Uma cadeia de versões — a mais recente primeiro, histórico completo em `versions`. */
@@ -73,6 +75,8 @@ function mapRow(row: any): LibraryAsset {
     createdAt: row.created_at,
     signedUrl: row.signed_url ?? null,
     mimeType: row.storage_objects?.mime_type ?? null,
+    width: row.width ?? null,
+    height: row.height ?? null,
   }
 }
 
@@ -82,7 +86,7 @@ export async function listAssetChains(orgSlug: string, contatoId: string): Promi
 
   const { data: assets } = await supabase
     .from('library_assets')
-    .select('id, contato_id, campaign_id, kind, root_asset_id, parent_asset_id, version, title, description, status, public_token, created_at, storage_object_id, storage_objects(mime_type, storage_provider, bucket, storage_key)')
+    .select('id, contato_id, campaign_id, kind, root_asset_id, parent_asset_id, version, title, description, status, public_token, created_at, width, height, storage_object_id, storage_objects(mime_type, storage_provider, bucket, storage_key)')
     .eq('organization_id', org.id)
     .eq('contato_id', contatoId)
     .order('version', { ascending: false })
@@ -148,6 +152,11 @@ const UploadSchema = z.object({
   description: z.string().max(1000).optional().nullable(),
   /** Presente quando o upload é uma nova versão de um asset existente. */
   parentAssetId: z.string().uuid().optional().nullable(),
+  /** Dimensão original (px) detectada no browser antes do upload, ou
+   *  aproximada a partir do enquadramento escolhido manualmente quando a
+   *  detecção falha — usada pra exibir sem esticar/cortar. */
+  width: z.number().int().positive().optional().nullable(),
+  height: z.number().int().positive().optional().nullable(),
 })
 
 /**
@@ -167,6 +176,8 @@ export async function uploadLibraryAsset(
     filename: string
     contentType: string
     base64: string
+    width?: number | null
+    height?: number | null
   },
 ) {
   const { org, user } = await requireAccess(orgSlug)
@@ -210,6 +221,8 @@ export async function uploadLibraryAsset(
       storage_object_id: uploadResult.objectId,
       title: parsed.data.title,
       description: parsed.data.description || null,
+      width: parsed.data.width || null,
+      height: parsed.data.height || null,
       created_by: user.id,
     })
     .select('id')

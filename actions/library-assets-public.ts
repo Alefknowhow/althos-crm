@@ -22,6 +22,8 @@ export type PublicLibraryAsset = {
   createdAt: string
   mimeType: string | null
   filename: string | null
+  width: number | null
+  height: number | null
   signedUrl: string | null
   comments: { id: string; authorType: 'team' | 'client'; authorName: string | null; body: string; createdAt: string }[]
 }
@@ -61,6 +63,8 @@ export async function getPublicLibraryAsset(token: string): Promise<PublicLibrar
     createdAt: data.createdAt,
     mimeType: data.mimeType ?? null,
     filename: data.filename ?? null,
+    width: data.width ?? null,
+    height: data.height ?? null,
     signedUrl,
     comments: data.comments || [],
   }

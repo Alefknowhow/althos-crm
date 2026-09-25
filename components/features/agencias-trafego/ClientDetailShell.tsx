@@ -15,7 +15,6 @@ import ClientPerformanceChart from '@/components/features/agencias-trafego/Clien
 import ClientIntelligenceTab from '@/components/features/agencias-trafego/ClientIntelligenceTab'
 import ClientTrackingTab from '@/components/features/agencias-trafego/ClientTrackingTab'
 import ClientFunnelCard from '@/components/features/agencias-trafego/ClientFunnelCard'
-import CampaignCreativesSection from '@/components/features/agencias-trafego/CampaignCreativesSection'
 import LibraryAssetsSection from '@/components/features/agencias-trafego/LibraryAssetsSection'
 import ClientReportsTab from '@/components/features/agencias-trafego/ClientReportsTab'
 import ClientContractTab from '@/components/features/agencias-trafego/ClientContractTab'
@@ -116,7 +115,6 @@ export default function ClientDetailShell({
     { key: 'analytics', label: 'Analytics' },
     { key: 'estrategia', label: 'Estratégia' },
     { key: 'campanhas', label: 'Estrutura de Campanhas' },
-    { key: 'criativos', label: 'Criativos' },
     { key: 'biblioteca', label: 'Biblioteca' },
     { key: 'conversoes', label: 'Conversões' },
     { key: 'inteligencia', label: 'Inteligência' },
@@ -188,10 +186,6 @@ export default function ClientDetailShell({
             initialItems={mediaPlanItems}
             creatives={creatives.map(c => ({ id: c.id, title: c.title }))}
           />
-        </TabsContent>
-
-        <TabsContent value="criativos">
-          <CampaignCreativesSection orgSlug={orgSlug} contatoId={clientId} creatives={creatives} />
         </TabsContent>
 
         <TabsContent value="biblioteca">

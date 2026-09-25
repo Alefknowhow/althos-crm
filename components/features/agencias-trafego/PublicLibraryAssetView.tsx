@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, FileText } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { respondToLibraryAssetPublic, type PublicLibraryAsset } from '@/actions/library-assets-public'
+import MediaPreview from '@/components/features/library/MediaPreview'
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pendente: { label: 'Aguardando sua aprovação', cls: 'bg-amber-100 text-amber-700' },
@@ -47,17 +48,7 @@ export default function PublicLibraryAssetView({ token, asset }: { token: string
         {asset.description && <p className="text-sm text-muted-foreground">{asset.description}</p>}
 
         {asset.signedUrl && (
-          <div className="rounded-lg border overflow-hidden bg-muted/20">
-            {asset.mimeType?.startsWith('video/') ? (
-              <video src={asset.signedUrl} controls className="w-full max-h-[420px]" />
-            ) : asset.mimeType === 'application/pdf' ? (
-              <a href={asset.signedUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-4 text-sm text-primary hover:underline">
-                <FileText className="w-4 h-4" /> Abrir PDF
-              </a>
-            ) : (
-              <img src={asset.signedUrl} alt={asset.title} className="w-full max-h-[420px] object-contain" />
-            )}
-          </div>
+          <MediaPreview src={asset.signedUrl} mimeType={asset.mimeType} width={asset.width} height={asset.height} title={asset.title} />
         )}
 
         {asset.comments.length > 0 && (

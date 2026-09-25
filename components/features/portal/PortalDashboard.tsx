@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LogOut, FileText, Image as ImageIcon, Loader2, FolderOpen, Megaphone } from 'lucide-react'
+import { LogOut, FileText, Loader2, FolderOpen, Megaphone } from 'lucide-react'
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
@@ -23,13 +23,6 @@ const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }
 }
 
 type Report = { id: string; filename: string | null; created_at: string; period_start: string | null; period_end: string | null }
-type Creative = { id: string; title: string; media_type: string; status: string; public_token: string | null; created_at: string }
-
-const CREATIVE_STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  pendente: { label: 'Aguardando sua aprovação', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  aprovado: { label: 'Aprovado', className: 'bg-green-100 text-green-800 border-green-200' },
-  reprovado: { label: 'Alteração solicitada', className: 'bg-red-100 text-red-800 border-red-200' },
-}
 
 const LIBRARY_STATUS_LABEL: Record<string, { label: string; className: string }> = {
   pendente: { label: 'Aguardando sua aprovação', className: 'bg-amber-100 text-amber-800 border-amber-200' },
@@ -44,14 +37,13 @@ const LIBRARY_KIND_LABEL: Record<string, string> = { bruto: 'Material bruto', pr
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, reports, creatives, libraryAssets, adAccounts, campaigns, conversions,
+  contatoId, clientName, orgName, overview, reports, libraryAssets, adAccounts, campaigns, conversions,
 }: {
   contatoId: string
   clientName: string
   orgName: string
   overview: ClientPerformanceSummary
   reports: Report[]
-  creatives: Creative[]
   libraryAssets: PortalLibraryAsset[]
   adAccounts: PortalAdAccount[]
   campaigns: PortalCampaign[]
@@ -96,7 +88,6 @@ export default function PortalDashboard({
           <TabsList>
             <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
             <TabsTrigger value="contas">Contas</TabsTrigger>
-            <TabsTrigger value="criativos">Aprovação de Criativos</TabsTrigger>
             <TabsTrigger value="biblioteca">Biblioteca</TabsTrigger>
             <TabsTrigger value="conversoes">Conversões</TabsTrigger>
             <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
@@ -167,36 +158,6 @@ export default function PortalDashboard({
                         })}
                       </tbody>
                     </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="criativos" className="mt-4">
-            <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Criativos</CardTitle></CardHeader>
-              <CardContent>
-                {creatives.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhum criativo enviado ainda.</p>
-                ) : (
-                  <div className="divide-y">
-                    {creatives.map(c => {
-                      const status = CREATIVE_STATUS_LABEL[c.status] || CREATIVE_STATUS_LABEL.pendente
-                      return (
-                        <div key={c.id} className="flex items-center justify-between py-2.5 text-sm">
-                          <span className="font-medium">{c.title}</span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                            {c.public_token && (
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={`/criativo/${c.public_token}`} target="_blank" rel="noreferrer">Ver e revisar</a>
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
                   </div>
                 )}
               </CardContent>

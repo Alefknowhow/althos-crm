@@ -14,18 +14,6 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getUser } from '@/lib/supabase/types'
 import { requirePortalAccess } from '@/actions/client-portal'
 
-export async function listPortalCreatives(contatoId: string) {
-  const access = await requirePortalAccess(contatoId)
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from('campaign_creatives')
-    .select('id, title, media_type, status, public_token, created_at')
-    .eq('organization_id', access.organizationId)
-    .eq('contato_id', contatoId)
-    .order('created_at', { ascending: false })
-  return data || []
-}
-
 export type PortalLibraryAsset = {
   id: string
   title: string
