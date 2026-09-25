@@ -111,7 +111,7 @@ export default function MediaPlanBuilder({
       setItems(prev => [...prev, {
         id: res.id, media_plan_id: activePlan.id, parent_id: parentId, level, platform,
         funnel_stage: null, name: `Novo ${LEVEL_LABEL[level].toLowerCase()}`, objective: null,
-        status: 'planned', budget_cents: null, budget_type: null, creative_id: null, config: {},
+        status: 'planned', budget_cents: null, budget_type: null, creative_id: null, library_asset_id: null, config: {},
         order_index: orderIndex,
       }])
       // Cria e já seleciona — ao criar uma campanha, a coluna de conjuntos
@@ -133,7 +133,7 @@ export default function MediaPlanBuilder({
     startTransition(async () => {
       const res = await updateMediaPlanItem(orgSlug, id, {
         name: item.name, objective: item.objective, funnel_stage: item.funnel_stage,
-        budget_cents: item.budget_cents, budget_type: item.budget_type, creative_id: item.creative_id,
+        budget_cents: item.budget_cents, budget_type: item.budget_type, library_asset_id: item.library_asset_id,
         config: item.config,
       })
       if (!res.ok) toast.error(res.error)

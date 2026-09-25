@@ -26,7 +26,6 @@ import type { ProjectColumn } from '@/actions/project-columns'
 import type { ProjectTemplateRow } from '@/actions/project-templates'
 import type { MediaPlan, MediaPlanItem } from '@/actions/media-plans'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
-import type { Creative } from '@/actions/campaign-creatives'
 import type { LibraryAssetChain } from '@/actions/library-assets'
 import type { TrafficActivity } from '@/actions/trafego-history'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
@@ -58,7 +57,7 @@ type SaleRow = { id: string; sale_date: string | null; amount_cents: number | nu
  * (MarketingStrategistDock), disponível em qualquer seção.
  */
 export default function ClientDetailShell({
-  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, creatives, libraryChains, sales, activities,
+  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, libraryChains, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
@@ -75,7 +74,6 @@ export default function ClientDetailShell({
   mediaPlanItems: MediaPlanItem[]
   accounts: AdAccount[]
   campaigns: CampaignRow[]
-  creatives: Creative[]
   libraryChains: LibraryAssetChain[]
   sales: SaleRow[]
   activities: TrafficActivity[]
@@ -184,7 +182,7 @@ export default function ClientDetailShell({
             contatoId={clientId}
             plans={mediaPlans}
             initialItems={mediaPlanItems}
-            creatives={creatives.map(c => ({ id: c.id, title: c.title }))}
+            creatives={libraryChains.filter(c => c.latest.kind === 'produzido').map(c => ({ id: c.latest.id, title: c.latest.title }))}
           />
         </TabsContent>
 

@@ -97,8 +97,8 @@ export function MediaPlanItemEditForm({
 
       {item.level === 'ad' && (
         <div className="space-y-1 max-w-xs">
-          <Label className="text-xs">Criativo (biblioteca do cliente)</Label>
-          <Select value={item.creative_id ?? undefined} onValueChange={v => onPatch(item.id, { creative_id: v })}>
+          <Label className="text-xs">Criativo (Biblioteca)</Label>
+          <Select value={item.library_asset_id ?? undefined} onValueChange={v => onPatch(item.id, { library_asset_id: v })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar criativo" /></SelectTrigger>
             <SelectContent>
               {creatives.length === 0

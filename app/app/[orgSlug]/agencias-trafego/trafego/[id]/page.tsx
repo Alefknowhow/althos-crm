@@ -4,7 +4,6 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/server'
 import { getTrafficClientProfile } from '@/actions/traffic-client-profile'
 import { listAdAccountsByClient, listCampaignsByClient } from '@/actions/marketing'
-import { listCreatives } from '@/actions/campaign-creatives'
 import { listAssetChains } from '@/actions/library-assets'
 import { listClientActivity } from '@/actions/trafego-history'
 import { getClientPerformanceComparison, getClientDailySeries } from '@/actions/trafego-performance'
@@ -67,11 +66,10 @@ export default async function TrafficClientDetailPage({
   const now = new Date()
   const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
 
-  const [profile, accounts, campaigns, creatives, libraryChains, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance] = await Promise.all([
+  const [profile, accounts, campaigns, libraryChains, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance] = await Promise.all([
     getTrafficClientProfile(params.orgSlug, params.id),
     listAdAccountsByClient(params.orgSlug, params.id),
     listCampaignsByClient(params.orgSlug, params.id),
-    listCreatives(params.orgSlug, params.id),
     listAssetChains(params.orgSlug, params.id),
     supabase
       .from('sales')
@@ -141,7 +139,6 @@ export default async function TrafficClientDetailPage({
       profile={profile}
       accounts={accounts as any[]}
       campaigns={campaigns as any[]}
-      creatives={creatives}
       libraryChains={libraryChains}
       sales={(sales || []) as any[]}
       activities={activities}

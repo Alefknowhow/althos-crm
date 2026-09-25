@@ -53,6 +53,10 @@ export type MediaPlanItem = {
   budget_cents: number | null
   budget_type: 'daily' | 'lifetime' | null
   creative_id: string | null
+  /** Aponta pra library_assets (Biblioteca, #23) — substitui creative_id
+   *  (campaign_creatives, mantido só por compatibilidade) como fonte do
+   *  criativo vinculado ao item do plano de mídia. */
+  library_asset_id: string | null
   config: Record<string, unknown>
   order_index: number
 }
@@ -83,6 +87,7 @@ const mediaPlanItemInput = z.object({
   budget_cents: z.number().int().min(0).nullable().optional(),
   budget_type: z.enum(['daily', 'lifetime']).nullable().optional(),
   creative_id: z.string().uuid().nullable().optional(),
+  library_asset_id: z.string().uuid().nullable().optional(),
   config: z.record(z.string(), z.unknown()).optional(),
   order_index: z.number().int().optional(),
 })
