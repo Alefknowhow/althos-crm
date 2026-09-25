@@ -220,6 +220,11 @@ export async function uploadPortalLibraryAsset(contatoId: string, input: unknown
     })
   } catch { /* auditoria best-effort — nunca falha o upload por causa dela */ }
 
+  try {
+    const { inngest } = await import('@/lib/inngest/client')
+    await inngest.send({ name: 'trafego.library.client_uploaded', data: { orgId: access.organizationId, leadId: contatoId, assetId: insertResult.id } })
+  } catch { /* automação é best-effort */ }
+
   return { ok: true as const, id: insertResult.id }
 }
 
@@ -302,6 +307,14 @@ export async function respondPortalAsset(
       payload: { asset_id: assetId },
     })
   } catch { /* best-effort */ }
+
+  try {
+    const { inngest } = await import('@/lib/inngest/client')
+    await inngest.send({
+      name: status === 'aprovado' ? 'trafego.library.approved' : 'trafego.library.change_requested',
+      data: { orgId: access.organizationId, leadId: contatoId, assetId },
+    })
+  } catch { /* automação é best-effort */ }
 
   return { ok: true as const }
 }

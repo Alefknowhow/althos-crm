@@ -1,6 +1,7 @@
 'use server'
 
 import { StorageService } from '@/lib/storage'
+import { createAdminClient } from '@/lib/supabase/server'
 
 /**
  * Fluxo público de aprovação da Biblioteca de Tráfego (issue #23) — sem
@@ -87,6 +88,33 @@ export async function respondToLibraryAssetPublic(
   if (!res.ok) return { ok: false as const, error: 'Falha ao registrar resposta' }
   const success = await res.json()
   if (!success) return { ok: false as const, error: 'Link inválido ou expirado' }
+
+  // Histórico do cliente (contato_activities) e evento de automação —
+  // best-effort, nunca bloqueia a resposta do cliente se a busca/gravação
+  // falhar. A RPC acima não devolve org/contato, então buscamos aqui pelo
+  // próprio token (mesmo padrão de actions/campaign-creatives.ts::respondToCreativePublic).
+  try {
+    const admin = createAdminClient()
+    const { data: asset } = await admin
+      .from('library_assets')
+      .select('id, contato_id, organization_id, title')
+      .eq('public_token', token)
+      .maybeSingle()
+    if (asset) {
+      await admin.from('contato_activities').insert({
+        contato_id: asset.contato_id,
+        organization_id: asset.organization_id,
+        type: status === 'aprovado' ? 'library_asset_approved_public' : 'library_asset_change_requested_public',
+        payload: { asset_id: asset.id, title: asset.title, comment },
+      })
+
+      const { inngest } = await import('@/lib/inngest/client')
+      await inngest.send({
+        name: status === 'aprovado' ? 'trafego.library.approved' : 'trafego.library.change_requested',
+        data: { orgId: asset.organization_id, leadId: asset.contato_id, assetId: asset.id },
+      })
+    }
+  } catch { /* best-effort */ }
 
   return { ok: true as const }
 }

@@ -149,6 +149,24 @@ export const processAutomationEventVerticals2 = inngest.createFunction(
   handleAutomationEvent,
 )
 
+// Biblioteca de Tráfego (#23) — ciclo de vida de material bruto/produzido
+// (submetido pra aprovação, aprovado, alteração solicitada, bruto enviado
+// pelo cliente). Function própria: as outras 3 já estão no teto de 10
+// triggers do Inngest.
+export const processAutomationEventTraffic = inngest.createFunction(
+  {
+    id: 'automation-process-traffic',
+    concurrency: { key: 'event.data.orgId', limit: 5 },
+    triggers: [
+      { event: 'trafego.library.submitted' },
+      { event: 'trafego.library.approved' },
+      { event: 'trafego.library.change_requested' },
+      { event: 'trafego.library.client_uploaded' },
+    ]
+  },
+  handleAutomationEvent,
+)
+
 export const executeAutomationRun = inngest.createFunction(
   {
     id: 'automation-run-execute',

@@ -1,7 +1,7 @@
 import { serve } from 'inngest/next'
 import { inngest } from '@/lib/inngest/client'
 import { sendEmail, importLeadsCsv } from '@/lib/inngest/functions'
-import { processAutomationEvent, processAutomationEventVerticals, processAutomationEventVerticals2, executeAutomationRun } from '@/lib/inngest/automation'
+import { processAutomationEvent, processAutomationEventVerticals, processAutomationEventVerticals2, processAutomationEventTraffic, executeAutomationRun } from '@/lib/inngest/automation'
 import { qualifyLeadFn } from '@/lib/inngest/qualifier'
 import { pushOverdueTasksFn, pushWhatsappMessageFn, pushInstagramMessageFn, pushInstagramCommentFn } from '@/lib/inngest/push'
 import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirthdayFn, automationEmbarqueScheduledFn } from '@/lib/inngest/automation-crons'
@@ -43,6 +43,7 @@ export const { GET, POST, PUT } = serve({
     processAutomationEvent,
     processAutomationEventVerticals,
     processAutomationEventVerticals2,
+    processAutomationEventTraffic,
     executeAutomationRun,
     importLeadsCsv,
     qualifyLeadFn,

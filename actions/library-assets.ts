@@ -211,6 +211,13 @@ export async function uploadLibraryAsset(
   })
   if (!insertResult.ok) return { ok: false as const, error: insertResult.error }
 
+  if (parsed.data.kind === 'produzido') {
+    try {
+      const { inngest } = await import('@/lib/inngest/client')
+      await inngest.send({ name: 'trafego.library.submitted', data: { orgId: org.id, leadId: parsed.data.contatoId, assetId: insertResult.id } })
+    } catch { /* automação é best-effort — nunca falha o upload por causa dela */ }
+  }
+
   revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${parsed.data.contatoId}`)
   return { ok: true as const, id: insertResult.id }
 }

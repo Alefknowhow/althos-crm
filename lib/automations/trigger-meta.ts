@@ -1,7 +1,8 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
   Stethoscope, Building2, Shield, Smile, DollarSign, Plane, PhoneCall,
-  MessageSquareText, AtSign, CalendarClock, type LucideIcon,
+  MessageSquareText, AtSign, CalendarClock, FolderOpen, CheckCircle2, Upload,
+  type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -61,6 +62,14 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'seguros.policy.issued',      label: 'Apólice Emitida (Seguros)',    desc: 'Dispara quando uma apólice é emitida',                icon: Shield, color: '#6366f1', niche: 'seguros' },
   { id: 'seguros.policy.renewal_due', label: 'Renovação Próxima (Seguros)',  desc: 'Dispara quando uma apólice se aproxima do vencimento', icon: Shield, color: '#6366f1', niche: 'seguros' },
   { id: 'seguros.claim.opened',       label: 'Sinistro Aberto (Seguros)',    desc: 'Dispara quando um sinistro é registrado',              icon: Shield, color: '#6366f1', niche: 'seguros' },
+
+  // Vertical Tráfego — ciclo de vida da Biblioteca (#23): material bruto
+  // enviado pelo cliente, criativo submetido/aprovado/com alteração
+  // solicitada (painel interno ou Portal do Cliente).
+  { id: 'trafego.library.client_uploaded',   label: 'Material Bruto Enviado (Tráfego)',       desc: 'Dispara quando o cliente envia um material bruto pelo Portal', icon: Upload,      color: '#0d9488', niche: 'trafego' },
+  { id: 'trafego.library.submitted',         label: 'Criativo Submetido (Tráfego)',           desc: 'Dispara quando a agência sobe um criativo aguardando aprovação', icon: FolderOpen, color: '#0d9488', niche: 'trafego' },
+  { id: 'trafego.library.approved',          label: 'Criativo Aprovado (Tráfego)',            desc: 'Dispara quando o cliente aprova um criativo',           icon: CheckCircle2, color: '#0d9488', niche: 'trafego' },
+  { id: 'trafego.library.change_requested',  label: 'Alteração Solicitada (Tráfego)',         desc: 'Dispara quando o cliente solicita alteração num criativo', icon: FolderOpen, color: '#0d9488', niche: 'trafego' },
 ]
 
 export function triggerMeta(type: string): TriggerTypeMeta {
