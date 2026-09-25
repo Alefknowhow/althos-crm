@@ -149,6 +149,17 @@ export async function SidebarNavVendas({
         </SidebarNavLink>
       )}
 
+      {/* Contratos (issue #16) — módulo global do Core, sem gate de nicho
+       *  de propósito: qualquer vertical pode ter contratos. */}
+      {can('contracts') && (
+        <SidebarNavLink href={`${base}/contratos`}>
+          <span className="flex items-center gap-2.5">
+            <FileSignature className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
+            <span>Contratos</span>
+          </span>
+        </SidebarNavLink>
+      )}
+
       {can('calendar') && isModuleEnabled(niche, 'agendamentos', disabledModules) && (
         <SidebarNavLink href={`${base}/agendamentos`} dataTour="agendamentos">
           <span className="flex items-center gap-2.5">

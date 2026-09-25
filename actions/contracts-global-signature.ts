@@ -1,0 +1,173 @@
+'use server'
+
+/**
+ * Camada de assinatura eletrônica do módulo global de Contratos (issue #16
+ * §11) — reaproveita o mesmo client Autentique (lib/autentique.ts) e a
+ * mesma chave BYOK (organizations.autentique_api_key) que Reservas/Tráfego
+ * já usam, sem duplicar integração. Upload de PDF via StorageService (R2),
+ * não os buckets Supabase legados de sale_contracts/plan_contracts.
+ */
+
+import { createClient } from '@/lib/supabase/server'
+import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
+import { checkMemberPermission } from '@/lib/permissions.server'
+import { StorageService } from '@/lib/storage'
+import { uploadFile } from './storage-upload'
+import { createAutentiqueDocument, getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners, type AutentiqueSigner } from '@/lib/autentique'
+import { revalidatePath } from 'next/cache'
+
+async function requireContractsAccess(orgSlug: string) {
+  const user = await requireAuth()
+  const org = await getCurrentOrganization(orgSlug)
+  const perm = await checkMemberPermission(org.id, user.id, 'contracts')
+  return { user, org, perm }
+}
+
+/** Gera o PDF (client já converteu o HTML via html2canvas+jsPDF, mesmo
+ *  mecanismo do ContratoManagerDialog de Reservas — não reimplementado aqui)
+ *  e envia direto pra assinatura, num só passo — evita um estado
+ *  intermediário "PDF subiu mas ninguém foi notificado". */
+export async function sendContractForSignature(orgSlug: string, contractId: string, base64Pdf: string) {
+  const { org, perm } = await requireContractsAccess(orgSlug)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('id, title, status')
+    .eq('id', contractId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!contract) return { ok: false as const, error: 'Contrato não encontrado' }
+  if (contract.status === 'signed' || contract.status === 'cancelled') {
+    return { ok: false as const, error: 'Este contrato já está encerrado.' }
+  }
+
+  const { data: signers } = await supabase
+    .from('contract_signers')
+    .select('id, name, email, phone')
+    .eq('contract_id', contractId)
+    .order('sort_order')
+  if (!signers || signers.length === 0) return { ok: false as const, error: 'Adicione ao menos um signatário antes de enviar.' }
+  const missingContact = signers.find(s => !s.email && !s.phone)
+  if (missingContact) return { ok: false as const, error: `Informe e-mail ou telefone de "${missingContact.name}".` }
+
+  const { data: org2 } = await supabase.from('organizations').select('autentique_api_key').eq('id', org.id).maybeSingle()
+  if (!org2?.autentique_api_key) {
+    return { ok: false as const, error: 'Configure a chave da Autentique em Configurações antes de enviar contratos.' }
+  }
+
+  const upload = await uploadFile(orgSlug, {
+    category: 'documents',
+    scopeId: contractId,
+    filename: 'contrato.pdf',
+    contentType: 'application/pdf',
+    base64: base64Pdf,
+  })
+  if (!upload.ok) return { ok: false as const, error: upload.error }
+
+  await supabase.from('contracts').update({ pdf_storage_object_id: upload.objectId }).eq('id', contractId)
+
+  const buffer = Buffer.from(base64Pdf, 'base64')
+  const pdfBlob = new Blob([buffer], { type: 'application/pdf' })
+
+  const autentiqueSigners: AutentiqueSigner[] = signers.map(s => ({ name: s.name, email: s.email || undefined, phone: s.phone || undefined }))
+
+  try {
+    const doc = await createAutentiqueDocument(org2.autentique_api_key, contract.title, autentiqueSigners, pdfBlob, 'contrato.pdf')
+
+    // Signatures voltam na mesma ordem em que os signatários foram enviados.
+    const docSignatures = (doc.signatures || []) as { public_id: string; email?: string; link?: { short_link?: string } }[]
+    for (let i = 0; i < signers.length; i++) {
+      const link = docSignatures[i]?.link?.short_link || null
+      await supabase.from('contract_signers').update({ status: 'sent' }).eq('id', signers[i].id)
+      if (i === 0 && link) {
+        await supabase.from('contracts').update({ signature_link: link }).eq('id', contractId)
+      }
+    }
+
+    await supabase.from('contracts').update({
+      status: 'sent',
+      autentique_document_id: doc.id,
+      sent_at: new Date().toISOString(),
+    }).eq('id', contractId)
+
+    await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.sent', payload: { autentique_document_id: doc.id } })
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao enviar para assinatura.' }
+  }
+
+  revalidatePath(`/app/${orgSlug}/contratos/${contractId}`)
+  return { ok: true as const }
+}
+
+/** Consulta manual (botão "Verificar status") — o webhook (issue #16 §12)
+ *  já atualiza automaticamente na maioria dos casos; isso é o fallback
+ *  igual ao que Tráfego já usa hoje pra plan_contracts (que não tem
+ *  webhook cobrindo ele). */
+export async function refreshContractStatus(orgSlug: string, contractId: string) {
+  const { org, perm } = await requireContractsAccess(orgSlug)
+  if (!perm.allowed) return { ok: false as const, error: perm.reason }
+  const supabase = createClient()
+
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('id, autentique_document_id, status')
+    .eq('id', contractId)
+    .eq('organization_id', org.id)
+    .maybeSingle()
+  if (!contract?.autentique_document_id) return { ok: false as const, error: 'Contrato ainda não foi enviado para assinatura.' }
+
+  const { data: signers } = await supabase.from('contract_signers').select('id, email').eq('contract_id', contractId)
+  const { data: org2 } = await supabase.from('organizations').select('autentique_api_key').eq('id', org.id).maybeSingle()
+  if (!org2?.autentique_api_key) return { ok: false as const, error: 'Chave da Autentique não configurada.' }
+
+  try {
+    const doc = await getAutentiqueDocumentStatus(org2.autentique_api_key, contract.autentique_document_id)
+    const knownEmails = (signers || []).map(s => s.email).filter(Boolean) as string[]
+    const signed = isDocumentSignedByKnownSigners(doc, knownEmails)
+
+    if (signed && contract.status !== 'signed') {
+      let signedObjectId: string | null = null
+      const signedFileUrl = doc?.files?.signed || doc?.files?.pades
+      if (signedFileUrl) {
+        const res = await fetch(signedFileUrl)
+        if (res.ok) {
+          const arrBuf = await res.arrayBuffer()
+          const upload = await StorageService.upload({
+            organizationId: org.id,
+            category: 'documents',
+            scopeId: contractId,
+            fileId: crypto.randomUUID(),
+            body: Buffer.from(arrBuf),
+            contentType: 'application/pdf',
+            filename: 'contrato-assinado.pdf',
+          })
+          const { data: obj } = await supabase.from('storage_objects').insert({
+            organization_id: org.id,
+            storage_provider: upload.provider,
+            bucket: upload.bucket,
+            storage_key: upload.storageKey,
+            filename: 'contrato-assinado.pdf',
+            mime_type: 'application/pdf',
+            size_bytes: arrBuf.byteLength,
+          }).select('id').single()
+          signedObjectId = obj?.id ?? null
+        }
+      }
+
+      await supabase.from('contracts').update({
+        status: 'signed',
+        signed_at: new Date().toISOString(),
+        ...(signedObjectId ? { signed_pdf_storage_object_id: signedObjectId } : {}),
+      }).eq('id', contractId)
+      await supabase.from('contract_signers').update({ status: 'signed', signed_at: new Date().toISOString() }).eq('contract_id', contractId)
+      await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.signed' })
+    }
+
+    revalidatePath(`/app/${orgSlug}/contratos/${contractId}`)
+    return { ok: true as const, signed }
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Falha ao consultar status na Autentique.' }
+  }
+}

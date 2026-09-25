@@ -48,6 +48,7 @@ export type PermissionKey =
   | 'sales_coach'
   | 'marketing'
   | 'automations'
+  | 'contracts'
   | 'templates'
   | 'forms'
   | 'financial'
@@ -77,6 +78,9 @@ export const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'catalog',       label: 'Catálogo',          section: 'Vendas' },
   { key: 'sales',         label: 'Vendas',            section: 'Vendas' },
   { key: 'calendar',      label: 'Agendamentos',      section: 'Vendas' },
+  // Módulo global (issue #16) — Contrato → Reserva/Venda/Oportunidade/
+  // Cliente/Projeto, sem depender de nicho.
+  { key: 'contracts',     label: 'Contratos',         section: 'Vendas' },
   // Viagens (só orgs do nicho de viagens)
   { key: 'reservas',      label: 'Reservas',          section: 'Viagens' },
   { key: 'cotacoes',      label: 'Cotações',          section: 'Viagens' },

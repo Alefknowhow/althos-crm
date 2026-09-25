@@ -1,0 +1,200 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Loader2, Send, RefreshCw, XCircle, Pencil } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { updateContractDraft, cancelContract } from '@/actions/contracts-global'
+import { sendContractForSignature, refreshContractStatus } from '@/actions/contracts-global-signature'
+import ContractSignersPanel from './ContractSignersPanel'
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Rascunho', ready: 'Pronto para envio', sent: 'Enviado', viewed: 'Visualizado',
+  awaiting_signature: 'Aguardando assinatura', signed: 'Assinado', rejected: 'Recusado',
+  expired: 'Expirado', cancelled: 'Cancelado',
+}
+
+const EVENT_LABEL: Record<string, string> = {
+  'contract.created': 'Contrato criado',
+  'contract.generated': 'Documento gerado',
+  'contract.sent': 'Enviado para assinatura',
+  'contract.signed': 'Assinado',
+  'contract.cancelled': 'Cancelado',
+}
+
+export default function ContractDetailView({ orgSlug, contract }: { orgSlug: string; contract: any }) {
+  const router = useRouter()
+  const [editingBody, setEditingBody] = useState(false)
+  const [bodyDraft, setBodyDraft] = useState(contract.body_html || '')
+  const [saving, setSaving] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const captureRef = useRef<HTMLDivElement>(null)
+
+  const editable = contract.status === 'draft'
+  const canSend = (contract.status === 'draft' || contract.status === 'ready')
+    && (contract.contract_signers?.length || 0) > 0
+    && !!contract.body_html
+    && !editingBody
+  const canCheck = !!contract.autentique_document_id && contract.status !== 'signed' && contract.status !== 'cancelled'
+
+  function reload() {
+    router.refresh()
+  }
+
+  async function saveBody() {
+    setSaving(true)
+    const res = await updateContractDraft(orgSlug, contract.id, { bodyHtml: bodyDraft })
+    setSaving(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setEditingBody(false)
+    toast.success('Conteúdo salvo')
+    reload()
+  }
+
+  async function handleCancel() {
+    const res = await cancelContract(orgSlug, contract.id)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Contrato cancelado')
+    reload()
+  }
+
+  /** Converte o body_html renderizado num PDF (html2canvas + jsPDF — mesmo
+   *  mecanismo já usado pelo ContratoManagerDialog de Reservas) e envia
+   *  direto pra assinatura via Autentique. */
+  async function handleGenerateAndSend() {
+    const target = captureRef.current
+    if (!target) return
+    setSending(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const { jsPDF } = await import('jspdf')
+
+      const canvas = await html2canvas(target, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageWidth = 210
+      const pageHeight = 297
+      const imgWidth = pageWidth
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+      const imgData = canvas.toDataURL('image/jpeg', 0.92)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      const base64 = pdf.output('datauristring').split(',')[1]
+
+      const res = await sendContractForSignature(orgSlug, contract.id, base64)
+      if (!res.ok) { toast.error(res.error); return }
+      toast.success('Contrato enviado para assinatura')
+      reload()
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao gerar o PDF do contrato.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleCheckStatus() {
+    setChecking(true)
+    const res = await refreshContractStatus(orgSlug, contract.id)
+    setChecking(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success(res.signed ? 'Contrato assinado!' : 'Ainda aguardando assinatura.')
+    reload()
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">{contract.title}</h1>
+          <p className="text-xs text-muted-foreground">
+            {contract.related_entity_type ? `Origem: ${contract.related_entity_type}` : 'Sem vínculo'}
+          </p>
+        </div>
+        <Badge>{STATUS_LABEL[contract.status] || contract.status}</Badge>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {canSend && (
+          <Button type="button" size="sm" onClick={handleGenerateAndSend} disabled={sending}>
+            {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
+            Gerar e enviar para assinatura
+          </Button>
+        )}
+        {canCheck && (
+          <Button type="button" size="sm" variant="outline" onClick={handleCheckStatus} disabled={checking}>
+            {checking ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+            Verificar status
+          </Button>
+        )}
+        {contract.status !== 'signed' && contract.status !== 'cancelled' && (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleCancel}>
+            <XCircle className="w-4 h-4 mr-1.5" /> Cancelar contrato
+          </Button>
+        )}
+      </div>
+
+      <ContractSignersPanel
+        orgSlug={orgSlug}
+        contractId={contract.id}
+        signers={contract.contract_signers || []}
+        editable={editable}
+        onChange={reload}
+      />
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Documento</p>
+          {editable && !editingBody && (
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingBody(true)}>
+              <Pencil className="w-3.5 h-3.5 mr-1" /> Editar conteúdo
+            </Button>
+          )}
+        </div>
+        {editingBody ? (
+          <div className="space-y-2">
+            <Textarea value={bodyDraft} onChange={e => setBodyDraft(e.target.value)} rows={12} className="font-mono text-xs" />
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => { setEditingBody(false); setBodyDraft(contract.body_html || '') }}>Cancelar</Button>
+              <Button type="button" size="sm" onClick={saveBody} disabled={saving}>Salvar</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border p-4 max-h-96 overflow-y-auto bg-white">
+            {contract.body_html ? (
+              <div ref={captureRef} className="max-w-[210mm] bg-white text-sm" dangerouslySetInnerHTML={{ __html: contract.body_html }} />
+            ) : (
+              <p className="text-xs text-muted-foreground">Sem conteúdo — escolha um modelo ou edite o conteúdo manualmente.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Timeline</p>
+        <div className="space-y-1.5">
+          {(contract.events || []).map((e: any) => (
+            <div key={e.id} className={cn('flex items-center gap-2 text-xs')}>
+              <span className="text-muted-foreground shrink-0">{new Date(e.created_at).toLocaleString('pt-BR')}</span>
+              <span>{EVENT_LABEL[e.type] || e.type}</span>
+            </div>
+          ))}
+          {(!contract.events || contract.events.length === 0) && (
+            <p className="text-xs text-muted-foreground">Nenhum evento registrado ainda.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

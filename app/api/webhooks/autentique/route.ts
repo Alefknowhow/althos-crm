@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
 import { verifyStaticToken } from '@/lib/security/webhook'
+import { StorageService } from '@/lib/storage'
 
 // Webhook global da Autentique — cada organização registra essa mesma URL no
 // próprio painel (Configurações de Desenvolvedor > Webhooks) usando sua conta.
@@ -76,8 +77,74 @@ export async function POST(req: Request) {
           console.error('autentique webhook: falha ao consultar status do documento', e)
         }
       }
+    } else {
+      // Não achou em sale_contracts (Reservas) — tenta o módulo global novo
+      // (issue #16). Aditivo: nunca toca sale_contracts/travel_sales, só
+      // aprende a reconhecer um autentique_document_id que o fluxo antigo
+      // não geraria (contracts.autentique_document_id é um índice único
+      // separado, populado só por sendContractForSignature).
+      await handleGlobalContractSigned(supabase, documentId)
     }
   }
 
   return NextResponse.json({ ok: true })
+}
+
+async function handleGlobalContractSigned(supabase: ReturnType<typeof createAdminClient>, documentId: string) {
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('id, organization_id, status')
+    .eq('autentique_document_id', documentId)
+    .maybeSingle()
+  if (!contract || contract.status === 'signed') return
+
+  const { data: org } = await supabase.from('organizations').select('autentique_api_key').eq('id', contract.organization_id).maybeSingle()
+  if (!org?.autentique_api_key) return
+
+  const { data: signers } = await supabase.from('contract_signers').select('email').eq('contract_id', contract.id)
+  const knownEmails = (signers || []).map(s => s.email).filter(Boolean) as string[]
+
+  try {
+    const doc = await getAutentiqueDocumentStatus(org.autentique_api_key, documentId)
+    if (!isDocumentSignedByKnownSigners(doc, knownEmails)) return
+
+    let signedObjectId: string | null = null
+    const signedFileUrl = doc?.files?.signed || doc?.files?.pades
+    if (signedFileUrl) {
+      const res = await fetch(signedFileUrl)
+      if (res.ok) {
+        const arrBuf = await res.arrayBuffer()
+        const upload = await StorageService.upload({
+          organizationId: contract.organization_id,
+          category: 'documents',
+          scopeId: contract.id,
+          fileId: crypto.randomUUID(),
+          body: Buffer.from(arrBuf),
+          contentType: 'application/pdf',
+          filename: 'contrato-assinado.pdf',
+        })
+        const { data: obj } = await supabase.from('storage_objects').insert({
+          organization_id: contract.organization_id,
+          storage_provider: upload.provider,
+          bucket: upload.bucket,
+          storage_key: upload.storageKey,
+          filename: 'contrato-assinado.pdf',
+          mime_type: 'application/pdf',
+          size_bytes: arrBuf.byteLength,
+        }).select('id').single()
+        signedObjectId = obj?.id ?? null
+      }
+    }
+
+    const now = new Date().toISOString()
+    await supabase.from('contracts').update({
+      status: 'signed',
+      signed_at: now,
+      ...(signedObjectId ? { signed_pdf_storage_object_id: signedObjectId } : {}),
+    }).eq('id', contract.id)
+    await supabase.from('contract_signers').update({ status: 'signed', signed_at: now }).eq('contract_id', contract.id)
+    await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.signed' })
+  } catch (e) {
+    console.error('autentique webhook: falha ao processar contrato global', e)
+  }
 }
