@@ -7,6 +7,7 @@ import type { Step, StageOpt, WaTemplate } from './AutomationFlowMeta'
 import type { AutomationFlowEdge } from '@/lib/automations/automation-traversal'
 import { InstagramDmFields, BranchFields } from './AutomationFlowInstagramFields'
 import { WhatsappTemplateFields } from './AutomationFlowWhatsappFields'
+import { ConditionRulesFields } from './AutomationFlowConditionFields'
 
 export function StepConfig({
   step, index, steps, setSteps, stages, whatsappTemplates, flowEdges, setStepEdges,
@@ -226,6 +227,8 @@ export function StepConfig({
           </div>
         </div>
       )
+    case 'condition':
+      return <ConditionRulesFields step={step} patch={patch} />
     case 'send_instagram_dm':
       return <InstagramDmFields step={step} patch={patch} labelClass={labelClass} />
     case 'wait_for_reply':

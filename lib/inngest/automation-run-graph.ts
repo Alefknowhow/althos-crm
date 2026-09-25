@@ -13,6 +13,7 @@
 import type { createAdminClient } from '../supabase/server'
 import { executeAutomationStep } from './automation-step-executor'
 import { getFirstAutomationStepId, getNextAutomationStepId, type AutomationFlow } from '../automations/automation-traversal'
+import { evaluateConditionGroups } from '../automations/condition-fields'
 
 type LogStep = (
   stepIndex: number,
@@ -53,6 +54,21 @@ export async function runAutomationGraph(ctx: {
         if (unit === 'days') sleepDuration = `${amount}d`
         await step.sleep(`wait-step-${currentId}`, sleepDuration)
         currentId = getNextAutomationStepId(flow, currentId, { replyText: '', matchedButtonIndex: null, fallbackOrder })
+        await step.run(`advance-run-${currentId}`, async () => {
+          await supabase.from('automation_runs').update({ current_step_id: currentId }).eq('id', runId)
+        })
+        continue
+      }
+
+      if (stepDef.type === 'condition') {
+        // Gate síncrono (sem I/O externo): avalia grupos de regras AND/OR
+        // contra o lead e ramifica pela edge `field_result` correspondente
+        // — não é uma "ação", só decide o próximo passo.
+        const result = evaluateConditionGroups(stepDef.config?.groups, lead)
+        await step.run(`log-condition-${currentId}`, async () => {
+          await logStep(stepIndex, 'condition', 'success', result ? 'Condição atendida' : 'Condição não atendida')
+        })
+        currentId = getNextAutomationStepId(flow, currentId, { replyText: '', matchedButtonIndex: null, fallbackOrder, conditionResult: result })
         await step.run(`advance-run-${currentId}`, async () => {
           await supabase.from('automation_runs').update({ current_step_id: currentId }).eq('id', runId)
         })

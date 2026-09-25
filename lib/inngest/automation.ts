@@ -3,6 +3,7 @@ import { createAdminClient } from '../supabase/server'
 import { executeAutomationStep } from './automation-step-executor'
 import { getNextAutomationStepId, type AutomationFlow } from '../automations/automation-traversal'
 import { runAutomationGraph } from './automation-run-graph'
+import { evaluateConditionGroups } from '../automations/condition-fields'
 
 // Inngest limita 10 triggers por function — com Core + Clínicas + Imóveis +
 // Seguros a lista passou de 10, então o processamento (mesmo corpo,
@@ -233,6 +234,14 @@ export const executeAutomationRun = inngest.createFunction(
           if (unit === 'hours') sleepDuration = `${amount}h`
           if (unit === 'days') sleepDuration = `${amount}d`
           await step.sleep(`wait-step-${currentStep}`, sleepDuration)
+        } else if (stepDef.type === 'condition') {
+          // Sem `flow` não há pra onde ramificar — uma condição falsa aqui só
+          // encerra o run (os passos seguintes do array nunca rodam).
+          const result = evaluateConditionGroups(stepDef.config?.groups, lead)
+          await step.run(`log-step-${currentStep}`, async () => {
+            await logStep(currentStep, 'condition', 'success', result ? 'Condição atendida' : 'Condição não atendida — run encerrado')
+          })
+          if (!result) break
         } else {
           // Execute the action. Timing + outcome are computed INSIDE the durable
           // step so they're memoized deterministically across Inngest replays.

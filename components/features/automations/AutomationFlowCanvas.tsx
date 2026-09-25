@@ -129,7 +129,7 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
         target: e.to,
         sourceHandle: 'default',
         animated: !e.condition,
-        label: e.condition?.type === 'keyword' ? 'palavra-chave' : e.condition?.type === 'button' ? `botão ${e.condition.buttonIndex}` : undefined,
+        label: e.condition?.type === 'keyword' ? 'palavra-chave' : e.condition?.type === 'button' ? `botão ${e.condition.buttonIndex}` : e.condition?.type === 'field_result' ? (e.condition.value ? 'verdadeiro' : 'falso') : undefined,
         data: { condition: e.condition },
       })),
     ])
@@ -177,6 +177,7 @@ function addStep(type: string, afterNodeId?: string) {
   // já vem fixada pelo handle, mas o painel ainda mostra/permite trocar).
   const selectedEdgeSourceIsWait = selectedEdgeSourceStep?.type === 'wait_for_reply'
     || (selectedEdgeSourceStep?.type === 'send_instagram_dm' && (selectedEdgeSourceStep.config?.buttons?.length || 0) > 0)
+  const selectedEdgeSourceIsCondition = selectedEdgeSourceStep?.type === 'condition'
 
   // Rótulos reais dos botões pro Select do painel de conexão: se a edge sai
   // de um "DM do Instagram", os botões estão no próprio passo; se sai de
@@ -198,7 +199,7 @@ function addStep(type: string, afterNodeId?: string) {
 
   function updateSelectedEdgeCondition(condition: AutomationEdgeCondition | undefined) {
     setEdges(curr => curr.map(e => e.id === selectedEdgeId
-      ? { ...e, animated: !condition, label: condition?.type === 'keyword' ? 'palavra-chave' : condition?.type === 'button' ? `botão ${condition.buttonIndex}` : undefined, data: { condition } }
+      ? { ...e, animated: !condition, label: condition?.type === 'keyword' ? 'palavra-chave' : condition?.type === 'button' ? `botão ${condition.buttonIndex}` : condition?.type === 'field_result' ? (condition.value ? 'verdadeiro' : 'falso') : undefined, data: { condition } }
       : e))
   }
 
@@ -282,6 +283,7 @@ function addStep(type: string, afterNodeId?: string) {
           <AutomationFlowEdgePanel
             condition={selectedEdgeCondition}
             sourceIsWaitForReply={selectedEdgeSourceIsWait}
+            sourceIsCondition={selectedEdgeSourceIsCondition}
             buttonOptions={selectedEdgeButtonOptions}
             onChange={updateSelectedEdgeCondition}
             onRemoveEdge={removeSelectedEdge}

@@ -15,6 +15,7 @@
 export type AutomationEdgeCondition =
   | { type: 'button'; buttonIndex: number }
   | { type: 'keyword'; operator: 'eq' | 'contains'; value: string }
+  | { type: 'field_result'; value: boolean }
 
 export type AutomationFlowEdge = {
   id: string
@@ -31,8 +32,9 @@ export type AutomationFlow = {
   positions?: Record<string, { x: number; y: number }>
 }
 
-function evaluateCondition(condition: AutomationEdgeCondition, replyText: string, matchedButtonIndex: number | null): boolean {
+function evaluateCondition(condition: AutomationEdgeCondition, replyText: string, matchedButtonIndex: number | null, conditionResult: boolean | null): boolean {
   if (condition.type === 'button') return matchedButtonIndex === condition.buttonIndex
+  if (condition.type === 'field_result') return conditionResult === condition.value
   const current = replyText.trim().toLowerCase()
   const target = condition.value.trim().toLowerCase()
   return condition.operator === 'eq' ? current === target : current.includes(target)
@@ -42,6 +44,9 @@ export type AutomationStepReply = {
   replyText: string
   matchedButtonIndex: number | null
   fallbackOrder: string[]
+  /** Resultado do step "Condição (SE)" que acabou de rodar em `fromId`,
+   *  quando aplicável — usado pra casar edges do tipo `field_result`. */
+  conditionResult?: boolean | null
 }
 
 /**
@@ -49,11 +54,11 @@ export type AutomationStepReply = {
  * saindo de `fromId`, cai no `fallbackOrder` (ordem do array `steps`).
  */
 export function getNextAutomationStepId(flow: AutomationFlow | undefined, fromId: string, reply: AutomationStepReply): string {
-  const { replyText, matchedButtonIndex, fallbackOrder } = reply
+  const { replyText, matchedButtonIndex, fallbackOrder, conditionResult = null } = reply
   const outgoing = flow?.edges?.filter(e => e.from === fromId) ?? []
 
   if (outgoing.length > 0) {
-    const matched = outgoing.find(e => e.condition && evaluateCondition(e.condition, replyText, matchedButtonIndex))
+    const matched = outgoing.find(e => e.condition && evaluateCondition(e.condition, replyText, matchedButtonIndex, conditionResult))
     if (matched) return matched.to
     const defaultEdge = outgoing.find(e => !e.condition)
     if (defaultEdge) return defaultEdge.to

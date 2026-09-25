@@ -18,10 +18,13 @@ import { useDraggablePosition } from './useDraggablePanel'
 const PANEL_WIDTH = 440
 
 export default function AutomationFlowEdgePanel({
-  condition, sourceIsWaitForReply, buttonOptions, onChange, onRemoveEdge, onClose, anchor,
+  condition, sourceIsWaitForReply, sourceIsCondition, buttonOptions, onChange, onRemoveEdge, onClose, anchor,
 }: {
   condition: AutomationEdgeCondition | undefined
   sourceIsWaitForReply: boolean
+  /** Conexão sai de um passo "Condição (SE)" — ramifica por verdadeiro/falso
+   *  em vez de palavra-chave/botão. */
+  sourceIsCondition?: boolean
   /** Rótulos reais dos botões da mensagem que precedeu o "Aguardar
    *  Resposta" (quando existir) — vira um Select em vez de um número cego,
    *  pra facilitar "quem clicou no botão X vai pra Y". */
@@ -57,7 +60,27 @@ export default function AutomationFlowEdgePanel({
         </button>
       </div>
 
-      {!sourceIsWaitForReply ? (
+      {sourceIsCondition ? (
+        <div className="space-y-2 pt-1">
+          <p className="text-xs text-muted-foreground">Segue por aqui quando a condição resultar em:</p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button" size="sm" className="text-xs h-7 flex-1"
+              variant={condition?.type === 'field_result' && condition.value === true ? 'default' : 'outline'}
+              onClick={() => onChange({ type: 'field_result', value: true })}
+            >
+              Verdadeiro
+            </Button>
+            <Button
+              type="button" size="sm" className="text-xs h-7 flex-1"
+              variant={condition?.type === 'field_result' && condition.value === false ? 'default' : 'outline'}
+              onClick={() => onChange({ type: 'field_result', value: false })}
+            >
+              Falso
+            </Button>
+          </div>
+        </div>
+      ) : !sourceIsWaitForReply ? (
         <p className="text-xs text-muted-foreground">
           Define a ordem do fluxo. Só passos <span className="font-medium text-foreground">Aguardar Resposta</span> podem
           ramificar por palavra-chave ou botão clicado.
