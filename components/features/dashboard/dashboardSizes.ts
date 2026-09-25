@@ -17,3 +17,14 @@ export const COMPACT_CARD_H = 'h-[320px]'
 
 /** Região interna com scroll — cerca de 5 linhas visíveis antes de rolar. */
 export const LIST_SCROLL_H = 'h-[248px]'
+
+/** Gráfico principal das linhas 8/12 + 4/12 do dashboard v2 (Receita x Meta,
+ *  Forecast, Evolução da base, NPS) — faixa de 320-360px pedida no roteiro. */
+export const MAIN_CARD_H = 'h-[360px]'
+
+/** Card de tabela/lista larga (performance da equipe, clientes VIP/em risco,
+ *  pipeline em risco, funil grande). */
+export const TABLE_CARD_H = 'h-[440px]'
+
+/** Faixa baixa de largura cheia (mix de vendas em barra 100%). */
+export const STRIP_CARD_H = 'h-[220px]'
