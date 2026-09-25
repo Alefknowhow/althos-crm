@@ -1,14 +1,15 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Loader2, Send, RefreshCw, XCircle, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { updateContractDraft, cancelContract } from '@/actions/contracts-global'
+import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
+import { updateContractDraft, cancelContract, getContractSaleContext } from '@/actions/contracts-global'
 import { sendContractForSignature, refreshContractStatus } from '@/actions/contracts-global-signature'
 import ContractSignersPanel from './ContractSignersPanel'
 
@@ -33,7 +34,14 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [saleContext, setSaleContext] = useState<Awaited<ReturnType<typeof getContractSaleContext>> | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (contract.related_entity_type === 'venda' && contract.related_entity_id) {
+      getContractSaleContext(orgSlug, contract.related_entity_id).then(setSaleContext)
+    }
+  }, [orgSlug, contract.related_entity_type, contract.related_entity_id])
 
   const editable = contract.status === 'draft'
   const canSend = (contract.status === 'draft' || contract.status === 'ready')
@@ -119,7 +127,9 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
         <div>
           <h1 className="text-lg font-semibold">{contract.title}</h1>
           <p className="text-xs text-muted-foreground">
-            {contract.related_entity_type ? `Origem: ${contract.related_entity_type}` : 'Sem vínculo'}
+            {saleContext
+              ? `Venda: ${saleContext.contatoName}${saleContext.productName ? ` · ${saleContext.productName}` : ''}`
+              : contract.related_entity_type ? `Origem: ${contract.related_entity_type}` : 'Sem vínculo'}
           </p>
         </div>
         <Badge>{STATUS_LABEL[contract.status] || contract.status}</Badge>
@@ -162,24 +172,29 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
             </Button>
           )}
         </div>
-        {editingBody ? (
-          <div className="space-y-2">
-            <Textarea value={bodyDraft} onChange={e => setBodyDraft(e.target.value)} rows={12} className="font-mono text-xs" />
-            <div className="flex justify-end gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => { setEditingBody(false); setBodyDraft(contract.body_html || '') }}>Cancelar</Button>
-              <Button type="button" size="sm" onClick={saveBody} disabled={saving}>Salvar</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border p-4 max-h-96 overflow-y-auto bg-white">
-            {contract.body_html ? (
-              <div ref={captureRef} className="max-w-[210mm] bg-white text-sm" dangerouslySetInnerHTML={{ __html: contract.body_html }} />
-            ) : (
-              <p className="text-xs text-muted-foreground">Sem conteúdo — escolha um modelo ou edite o conteúdo manualmente.</p>
-            )}
-          </div>
-        )}
+        <div className="rounded-lg border p-4 max-h-96 overflow-y-auto bg-white">
+          {contract.body_html ? (
+            <div ref={captureRef} className="max-w-[210mm] bg-white text-sm" dangerouslySetInnerHTML={{ __html: contract.body_html }} />
+          ) : (
+            <p className="text-xs text-muted-foreground">Sem conteúdo — escolha um modelo ou edite o conteúdo manualmente.</p>
+          )}
+        </div>
       </div>
+
+      {editingBody && (
+        <Dialog open onOpenChange={o => { if (!o) { setEditingBody(false); setBodyDraft(contract.body_html || '') } }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader><DialogTitle>Editar conteúdo do contrato</DialogTitle></DialogHeader>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <TiptapEmailEditor orgSlug={orgSlug} value={bodyDraft} onChange={setBodyDraft} placeholder="Escreva o contrato…" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setEditingBody(false); setBodyDraft(contract.body_html || '') }} disabled={saving}>Cancelar</Button>
+              <Button type="button" onClick={saveBody} disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Timeline</p>

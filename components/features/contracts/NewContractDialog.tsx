@@ -2,14 +2,22 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2 } from 'lucide-react'
-import { createContract } from '@/actions/contracts-global'
+import { Loader2, Search } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
+import { createContract, listSalesForContractPicker, type SaleContractOption } from '@/actions/contracts-global'
 
+/**
+ * Gestão de contratos — toda criação passa por aqui e exige uma Venda
+ * (o cliente vem junto, via sale.contato_id) além do modelo. A empresa/
+ * agência contratada é sempre a própria organização (implícito — nenhum
+ * campo, já é quem está logado). Signatários são adicionados depois, na
+ * tela de detalhe (ContractSignersPanel), onde também mora o envio.
+ */
 export default function NewContractDialog({
   orgSlug, templates, open, onOpenChange, onCreated,
 }: {
@@ -19,30 +27,90 @@ export default function NewContractDialog({
   onOpenChange: (open: boolean) => void
   onCreated: (id: string) => void
 }) {
+  const [query, setQuery] = useState('')
+  const [options, setOptions] = useState<SaleContractOption[]>([])
+  const [searching, setSearching] = useState(false)
+  const [selectedSale, setSelectedSale] = useState<SaleContractOption | null>(null)
   const [title, setTitle] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [saving, setSaving] = useState(false)
 
+  async function handleSearch(q: string) {
+    setQuery(q)
+    setSearching(true)
+    const data = await listSalesForContractPicker(orgSlug, q)
+    setSearching(false)
+    setOptions(data)
+  }
+
+  function pickSale(sale: SaleContractOption) {
+    setSelectedSale(sale)
+    setOptions([])
+    if (!title.trim()) setTitle(`Contrato — ${sale.label}`)
+  }
+
   async function handleCreate() {
+    if (!selectedSale) { toast.error('Selecione a venda vinculada ao contrato.'); return }
     if (!title.trim()) { toast.error('Informe um título para o contrato.'); return }
     setSaving(true)
-    const res = await createContract(orgSlug, { title, templateId: templateId || null })
+    const res = await createContract(orgSlug, {
+      title,
+      templateId: templateId || null,
+      relatedEntityType: 'venda',
+      relatedEntityId: selectedSale.id,
+      valueCents: selectedSale.amountCents,
+    })
     setSaving(false)
     if (!res.ok) { toast.error(res.error); return }
-    setTitle('')
-    setTemplateId('')
+    reset()
     onOpenChange(false)
     onCreated(res.id)
   }
 
+  function reset() {
+    setQuery(''); setOptions([]); setSelectedSale(null); setTitle(''); setTemplateId('')
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={o => { onOpenChange(o); if (!o) reset() }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Novo contrato</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Novo contrato</DialogTitle>
+          <DialogDescription>Todo contrato precisa estar vinculado a uma venda — o cliente é herdado dela.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-2">
+            <Label>Venda</Label>
+            {selectedSale ? (
+              <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{selectedSale.label}</p>
+                  {selectedSale.amountCents != null && <p className="text-xs text-muted-foreground">{formatCurrency(selectedSale.amountCents)}</p>}
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedSale(null)}>Trocar</Button>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="pl-8" placeholder="Buscar venda por cliente..." value={query} onChange={e => handleSearch(e.target.value)} />
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-0.5">
+                  {searching && <p className="text-xs text-muted-foreground px-1 py-1">Buscando…</p>}
+                  {!searching && options.map(o => (
+                    <button key={o.id} type="button" onClick={() => pickSale(o)}
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted">
+                      <span className="truncate">{o.label}</span>
+                      {o.amountCents != null && <span className="text-muted-foreground shrink-0 ml-2">{formatCurrency(o.amountCents)}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
             <Label>Título</Label>
-            <Input placeholder="Ex: Contrato de prestação de serviços — Cliente X" value={title} onChange={e => setTitle(e.target.value)} />
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Contrato de prestação de serviços — Cliente X" />
           </div>
           <div className="space-y-2">
             <Label>Modelo (opcional)</Label>
@@ -53,7 +121,7 @@ export default function NewContractDialog({
                 {templates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Modelos são gerenciados em Documentos → Modelos.</p>
+            <p className="text-xs text-muted-foreground">Modelos são gerenciados na aba Modelos.</p>
           </div>
         </div>
         <DialogFooter>
