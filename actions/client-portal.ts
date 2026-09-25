@@ -279,3 +279,65 @@ export async function listPortalCreatives(contatoId: string) {
   return data || []
 }
 
+export type PortalLibraryAsset = {
+  id: string
+  title: string
+  kind: 'bruto' | 'produzido'
+  status: string
+  publicToken: string | null
+  version: number
+  createdAt: string
+}
+
+/** Biblioteca (issue #23) exposta no Portal — só a versão mais recente de
+ *  cada cadeia, igual `listAssetChains` faz pro painel interno. Usa admin
+ *  client (como getPortalReportUrl acima): a policy de RLS de
+ *  library_assets é pensada pro membro interno (get_user_organizations()),
+ *  não pro usuário do portal — sempre filtramos explicitamente por
+ *  access.organizationId/contatoId, nunca confiando em RLS aqui. */
+export async function listPortalLibraryAssets(contatoId: string): Promise<PortalLibraryAsset[]> {
+  const access = await requirePortalAccess(contatoId)
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('library_assets')
+    .select('id, root_asset_id, kind, status, public_token, version, title, created_at')
+    .eq('organization_id', access.organizationId)
+    .eq('contato_id', contatoId)
+    .order('version', { ascending: false })
+  if (!data) return []
+
+  const latestByRoot = new Map<string, any>()
+  for (const row of data) {
+    const current = latestByRoot.get(row.root_asset_id)
+    if (!current || row.version > current.version) latestByRoot.set(row.root_asset_id, row)
+  }
+
+  return Array.from(latestByRoot.values())
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map(row => ({
+      id: row.id, title: row.title, kind: row.kind, status: row.status,
+      publicToken: row.public_token, version: row.version, createdAt: row.created_at,
+    }))
+}
+
+/** Gera (ou reaproveita) o token público de aprovação de um asset a
+ *  partir do portal — mesma lógica de generateAssetLink (painel interno),
+ *  mas validada contra a membership do portal em vez da permissão
+ *  'trafego'. Nunca gera token pra um asset de outro cliente. */
+export async function getOrCreatePortalAssetLink(contatoId: string, assetId: string) {
+  const access = await requirePortalAccess(contatoId)
+  const admin = createAdminClient()
+  const { data: asset } = await admin
+    .from('library_assets').select('id, public_token')
+    .eq('id', assetId).eq('organization_id', access.organizationId).eq('contato_id', contatoId)
+    .maybeSingle()
+  if (!asset) return { ok: false as const, error: 'Material não encontrado.' }
+
+  if (asset.public_token) return { ok: true as const, token: asset.public_token }
+
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => b.toString(16).padStart(2, '0')).join('')
+  const { error } = await admin.from('library_assets').update({ public_token: token }).eq('id', assetId)
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const, token }
+}
+
