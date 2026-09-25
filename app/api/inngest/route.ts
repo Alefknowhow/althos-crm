@@ -5,6 +5,7 @@ import { processAutomationEvent, processAutomationEventVerticals, processAutomat
 import { qualifyLeadFn } from '@/lib/inngest/qualifier'
 import { pushOverdueTasksFn, pushWhatsappMessageFn, pushInstagramMessageFn, pushInstagramCommentFn } from '@/lib/inngest/push'
 import { automationStaleLeadsFn, automationTaskOverdueFn, automationCustomerBirthdayFn, automationEmbarqueScheduledFn } from '@/lib/inngest/automation-crons'
+import { automationRelativeDateFn } from '@/lib/inngest/automation-relative-date'
 import { trialWarningEmailFn, trialExpiredEmailFn } from '@/lib/inngest/trial-emails'
 import { integrationHealthPruneFn } from '@/lib/inngest/health-cron'
 import { generateSystemAlertsFn } from '@/lib/inngest/alerts-cron'
@@ -53,6 +54,7 @@ export const { GET, POST, PUT } = serve({
     automationTaskOverdueFn,
     automationCustomerBirthdayFn,
     automationEmbarqueScheduledFn,
+    automationRelativeDateFn,
     trialWarningEmailFn,
     trialExpiredEmailFn,
     integrationHealthPruneFn,

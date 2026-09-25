@@ -1,7 +1,7 @@
 import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
   Stethoscope, Building2, Shield, Smile, DollarSign, Plane, PhoneCall,
-  MessageSquareText, AtSign, type LucideIcon,
+  MessageSquareText, AtSign, CalendarClock, type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
 
@@ -28,6 +28,7 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'customer.birthday',   label: 'Aniversário do Cliente',   desc: 'Dispara no aniversário do cliente (verificação diária às 7h)', icon: Gift,   color: '#ec4899' },
   { id: 'customer.converted',  label: 'Cliente Convertido',       desc: 'Dispara quando o lead vira cliente (negócio ganho) — combine com um passo "Esperar" antes de enviar a pesquisa NPS', icon: Smile, color: '#22c55e' },
   { id: 'sale.registered',     label: 'Venda Registrada',         desc: 'Dispara quando uma venda é registrada',               icon: DollarSign,    color: '#22c55e' },
+  { id: 'date.relative',       label: 'Data Relativa',            desc: 'Dispara N dias/semanas/meses antes, no momento ou depois de uma data (embarque, vencimento, aniversário)', icon: CalendarClock, color: '#8b5cf6' },
 
   // Althos Voice
   { id: 'voice.call.completed', label: 'Ligação Concluída (Voice)', desc: 'Dispara quando uma ligação (humana ou Voice AI) termina', icon: PhoneCall, color: '#0891b2' },
