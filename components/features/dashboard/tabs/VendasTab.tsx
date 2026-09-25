@@ -14,7 +14,7 @@ import BarLineChart from '../charts/BarLineChart'
 import MultiLineChart from '../charts/MultiLineChart'
 import BulletForecast from '../charts/BulletForecast'
 import StackedShareBar from '../charts/StackedShareBar'
-import { MAIN_CARD_H, COMPACT_CARD_H, STRIP_CARD_H } from '../dashboardSizes'
+import { MAIN_CARD_H, STRIP_CARD_H } from '../dashboardSizes'
 import InsightCard from '../InsightCard'
 import MockInsightCard from '../mocks/MockInsightCard'
 
