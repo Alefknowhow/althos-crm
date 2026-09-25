@@ -4,6 +4,7 @@ import { executeAutomationStep } from './automation-step-executor'
 import { getNextAutomationStepId, type AutomationFlow } from '../automations/automation-traversal'
 import { runAutomationGraph } from './automation-run-graph'
 import { evaluateConditionGroups } from '../automations/condition-fields'
+import { createAutomationRunWithLoopGuard } from '../automations/loop-guard'
 
 // Inngest limita 10 triggers por function — com Core + Clínicas + Imóveis +
 // Seguros a lista passou de 10, então o processamento (mesmo corpo,
@@ -54,20 +55,14 @@ async function handleAutomationEvent({ event, step }: { event: any; step: any })
     if (isMatch) {
       matchedCount++
       await step.run(`create-run-${auto.id}`, async () => {
-        const { data: run, error } = await supabase.from('automation_runs').insert({
-          organization_id: orgId,
-          automation_id: auto.id,
-          automation_version_id: auto.current_version_id ?? null,
-          contato_id: leadId,
-          status: 'running',
-          current_step: 0,
-          started_at: new Date().toISOString(),
-          trigger_payload: event.data ?? {},
-        }).select().single()
-
-        if (error || !run) {
-          throw new Error(`Falha ao criar automation_run para automation ${auto.id}: ${error?.message}`)
-        }
+        const { blocked, run } = await createAutomationRunWithLoopGuard(supabase, {
+          organizationId: orgId,
+          automationId: auto.id,
+          automationVersionId: auto.current_version_id ?? null,
+          contatoId: leadId,
+          triggerPayload: event.data ?? {},
+        })
+        if (blocked || !run) return
 
         await inngest.send({
           name: 'automation.run.execute',
