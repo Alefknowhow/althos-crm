@@ -10,7 +10,7 @@ import { WhatsappTemplateFields } from './AutomationFlowWhatsappFields'
 import { ConditionRulesFields } from './AutomationFlowConditionFields'
 
 export function StepConfig({
-  step, index, steps, setSteps, stages, whatsappTemplates, flowEdges, setStepEdges,
+  step, index, steps, setSteps, stages, whatsappTemplates, agentDefinitions, flowEdges, setStepEdges,
 }: {
   step: Step
   index: number
@@ -18,6 +18,7 @@ export function StepConfig({
   setSteps: (s: Step[]) => void
   stages: StageOpt[]
   whatsappTemplates?: WaTemplate[]
+  agentDefinitions?: { id: string; name: string }[]
   /** Edges saindo de QUALQUER step (não só este) — usado pra listar as
    *  ramificações já configuradas neste `wait_for_reply`. */
   flowEdges?: AutomationFlowEdge[]
@@ -229,6 +230,45 @@ export function StepConfig({
       )
     case 'condition':
       return <ConditionRulesFields step={step} patch={patch} />
+    case 'assign_agent':
+      return (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label className={labelClass}>Agente IA</Label>
+            <Select
+              value={step.config.agentDefinitionId || '__none__'}
+              onValueChange={v => patch({ agentDefinitionId: v === '__none__' ? '' : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Desatribuir (volta ao padrão)</SelectItem>
+                {(agentDefinitions || []).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(agentDefinitions || []).length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum Agente IA cadastrado — crie um em Configurações → Agente IA.
+              </p>
+            )}
+          </div>
+          {step.config.agentDefinitionId && (
+            <div className="space-y-2">
+              <Label className={labelClass}>Objetivo desta execução</Label>
+              <textarea
+                placeholder="Ex: Cobrar {{lead.name}} sobre a fatura em aberto e registrar se houve promessa de pagamento."
+                value={step.config.objective || ''}
+                onChange={e => patch({ objective: e.target.value })}
+                rows={3}
+                className="w-full rounded-md border border-input bg-input/25 p-2.5 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Some ao objetivo/personalidade já configurados na Agent Definition — não os substitui. Atribui a conversa de
+                WhatsApp do lead a este agente a partir de agora (a próxima mensagem inbound já é atendida por ele).
+              </p>
+            </div>
+          )}
+        </div>
+      )
     case 'send_instagram_dm':
       return <InstagramDmFields step={step} patch={patch} labelClass={labelClass} />
     case 'wait_for_reply':

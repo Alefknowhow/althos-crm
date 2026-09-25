@@ -44,6 +44,7 @@ type Props = {
   stages: StageOpt[]
   stepStats?: Record<number, StepStat>
   whatsappTemplates?: WaTemplate[]
+  agentDefinitions?: { id: string; name: string }[]
   niche?: string | null
 }
 
@@ -55,7 +56,7 @@ export default function AutomationFlowCanvas(props: Props) {
   )
 }
 
-function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTemplates, niche }: Props) {
+function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTemplates, agentDefinitions, niche }: Props) {
   const steps: Step[] = useMemo(() => auto.steps || [], [auto.steps])
   function setSteps(next: Step[]) { setAuto({ ...auto, steps: next }) }
 
@@ -321,6 +322,7 @@ function addStep(type: string, afterNodeId?: string) {
             forms={forms}
             stages={stages}
             whatsappTemplates={whatsappTemplates}
+            agentDefinitions={agentDefinitions}
             niche={niche}
             flowEdges={edges.map(e => ({ id: e.id, from: e.source, to: e.target, condition: (e.data as any)?.condition }))}
             setStepEdges={setStepEdges}

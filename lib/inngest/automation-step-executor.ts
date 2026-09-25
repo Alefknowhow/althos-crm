@@ -12,6 +12,7 @@ import type { createAdminClient } from '../supabase/server'
 import { sendTemplateMessage } from '@/lib/whatsapp/meta-client'
 import { sendPushToOrg } from '@/lib/push/send'
 import { resolveSystemSignedUrl } from '@/lib/storage/system'
+import { executeAssignAgentStep } from './automation-step-assign-agent'
 
 /** Substitui {{lead.*}} num valor de variável de template — usado tanto no
  *  passo "Enviar WhatsApp" quanto em "Pesquisa NPS", pra permitir algo como
@@ -139,6 +140,13 @@ export async function executeAutomationStep(
         // dispatch assíncrono via evento pra manter o step idempotente
         // (a automação não deve tentar enviar de novo num replay).
         await inngest.send({ name: 'voice/sms.requested', data: { organizationId: orgId, contatoId: lead.id, fromNumber: fromNumber.e164_number, toNumber: lead.phone, body } })
+        break
+      }
+      case 'assign_agent': {
+        const result = await executeAssignAgentStep(supabase, orgId, lead, stepDef.config)
+        status = result.status
+        message = result.message
+        sent = result.sent
         break
       }
       case 'create_task':

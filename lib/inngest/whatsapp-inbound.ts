@@ -105,16 +105,35 @@ export const processWhatsappInboundFn = inngest.createFunction(
     // atribuição (o padrão pra toda org existente), zero mudança de
     // comportamento — o "cérebro" do SDR só passa a vir do Agent Definition
     // quando a org explicitamente configurar isso.
-    const assignedDefinition = await resolveAssignedAgentDefinition(admin, orgId, SCENARIO_WHATSAPP_INBOUND)
-
     const { data: conv } = await admin
       .from('whatsapp_conversations')
-      .select('id, contact_phone, contact_name, contato_id, automation_paused, ai_replies_count')
+      .select('id, contact_phone, contact_name, contato_id, automation_paused, ai_replies_count, assigned_agent_definition_id, assigned_agent_objective')
       .eq('id', conversationId)
       .maybeSingle()
     if (!conv) return { skipped: 'conversation-not-found' }
     // Conversa pausada (atendente assumiu manualmente) — IA não entra.
     if (conv.automation_paused) return { skipped: 'conversation-paused' }
+
+    // Override por conversa (issue #18 — step "Iniciar/atribuir conversa a
+    // Agente IA"): se uma automação atribuiu um Agent Definition específico
+    // a ESTA conversa, ele tem prioridade sobre a atribuição padrão por
+    // cenário — com o objetivo daquela execução específica, sem duplicar
+    // personalidade/prompt (continuam só na Agent Definition).
+    let assignedDefinition = await resolveAssignedAgentDefinition(admin, orgId, SCENARIO_WHATSAPP_INBOUND)
+    let runtimeObjective: string | undefined
+    if (conv.assigned_agent_definition_id) {
+      const { data: overrideDef } = await admin
+        .from('agent_definitions')
+        .select('*')
+        .eq('id', conv.assigned_agent_definition_id)
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (overrideDef) {
+        assignedDefinition = overrideDef as any
+        runtimeObjective = conv.assigned_agent_objective || undefined
+      }
+    }
 
     const maxReplies = attendant.max_replies_per_conversation ?? 30
     if ((conv.ai_replies_count || 0) >= maxReplies) {
@@ -213,7 +232,7 @@ export const processWhatsappInboundFn = inngest.createFunction(
     try {
       result = await respondAsAttendant(
         {
-          personaPrompt:   assignedDefinition ? buildPersonaPromptFromDefinition(assignedDefinition, { supportsStructuredResults: false }) : attendant.persona_prompt,
+          personaPrompt:   assignedDefinition ? buildPersonaPromptFromDefinition(assignedDefinition, { supportsStructuredResults: false, runtimeObjective }) : attendant.persona_prompt,
           businessContext: org.ai_business_context,
           knowledgeBase:   knowledgeBase as any,
           handoffPhrases:  (attendant.handoff_phrases as any) || [],

@@ -16,7 +16,7 @@ function isInstagramTrigger(triggerType: string): boolean {
   return triggerType === 'instagram.dm.received' || triggerType === 'instagram.comment.received'
 }
 
-export default function AutomationEditor({ orgSlug, automation, forms, stages, runs, stepStats, whatsappTemplates, niche }: any) {
+export default function AutomationEditor({ orgSlug, automation, forms, stages, runs, stepStats, whatsappTemplates, agentDefinitions, niche }: any) {
   const router = useRouter()
   const [auto, setAuto] = useState(automation)
   const [saving, setSaving] = useState(false)
@@ -97,7 +97,7 @@ export default function AutomationEditor({ orgSlug, automation, forms, stages, r
 
       <div className="flex-1 overflow-hidden relative" style={{ height: 'calc(100vh - 205px)' }}>
         {activeTab === 'editor' && (
-          <AutomationFlowCanvas auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} niche={niche} />
+          <AutomationFlowCanvas auto={auto} setAuto={setAuto} forms={forms} stages={stages} stepStats={stepStats} whatsappTemplates={whatsappTemplates} agentDefinitions={agentDefinitions} niche={niche} />
         )}
 
         {activeTab === 'runs' && (

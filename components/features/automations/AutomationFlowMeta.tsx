@@ -14,6 +14,7 @@ import {
   AtSign,
   Hourglass,
   GitBranch,
+  Bot,
 } from 'lucide-react'
 import { triggerMeta as sharedTriggerMeta } from '@/lib/automations/trigger-meta'
 
@@ -33,6 +34,7 @@ export const STEP_TYPES = [
   { id: 'send_sms',      label: 'Enviar SMS',       icon: MessageSquareText, color: '#65a30d', desc: 'Envia um SMS para o lead via Althos Voice' },
   { id: 'send_instagram_dm', label: 'DM do Instagram', icon: AtSign,   color: '#e1306c', desc: 'Envia uma mensagem direta no Instagram, com até 3 botões' },
   { id: 'condition',     label: 'Condição (SE)',    icon: GitBranch,      color: '#0d9488', desc: 'Ramifica o fluxo por campos do lead/CRM (estágio, tag, valor, status...)' },
+  { id: 'assign_agent',  label: 'Atribuir Agente IA', icon: Bot,          color: '#7c3aed', desc: 'Atribui um Agente IA (Configurações → Agente IA) à conversa de WhatsApp do lead, com um objetivo específico' },
   { id: 'wait_for_reply', label: 'Aguardar Resposta', icon: Hourglass,    color: '#f97316', desc: 'Pausa até o lead responder — permite ramificar o fluxo pela resposta' },
   { id: 'wait',          label: 'Aguardar',         icon: Clock,          color: '#94a3b8', desc: 'Pausa a execução por um período definido' },
 ] as const
@@ -114,6 +116,7 @@ export function describeStep(step: Step, stages: StageOpt[]): string {
       const n = (c.groups || []).reduce((acc: number, g: any) => acc + (g.rules?.length || 0), 0)
       return n > 0 ? `${n} regra(s)` : 'Sem regras — sempre passa'
     }
+    case 'assign_agent': return c.agentDefinitionId ? 'Agente selecionado' : 'Desatribuir (volta ao padrão)'
     default:              return ''
   }
 }

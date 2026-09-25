@@ -20,6 +20,14 @@ export type BuildPersonaPromptOptions = {
    * emit_result disponível (ver lib/agent-definitions/tools.ts).
    */
   supportsStructuredResults?: boolean
+  /**
+   * Objetivo DESTA execução específica (ex.: passado por um step de
+   * automação "Iniciar/atribuir conversa a Agente IA", issue #18) — mostrado
+   * junto do objetivo fixo da definição, não no lugar dele. `def.objective`
+   * é "por que esse papel existe"; isto aqui é "o que fazer agora nesta
+   * conversa", e pode mudar a cada invocação sem tocar na Agent Definition.
+   */
+  runtimeObjective?: string | null
 }
 
 export function buildPersonaPromptFromDefinition(def: AgentDefinition, opts?: BuildPersonaPromptOptions): string {
@@ -36,6 +44,7 @@ export function buildPersonaPromptFromDefinition(def: AgentDefinition, opts?: Bu
 
   const sections = [
     intro,
+    optionalSection('Objetivo desta conversa (definido por quem iniciou esta execução agora)', opts?.runtimeObjective),
     optionalSection('Objetivo', def.objective),
     optionalSection('Critérios de sucesso', def.success_criteria),
     optionalSection('Personalidade (como você se comporta)', def.personality),

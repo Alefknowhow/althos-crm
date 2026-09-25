@@ -2,6 +2,7 @@ import { getAutomation, getAutomationRuns, getStepStats } from '@/actions/automa
 import { getForms } from '@/actions/forms'
 import { getPipelinesAndStages } from '@/actions/pipeline'
 import { getWaTemplates } from '@/actions/whatsapp-templates'
+import { listAgentDefinitions } from '@/actions/agent-definitions'
 import { getCurrentOrganization } from '@/lib/supabase/types'
 import AutomationEditor from '@/components/features/AutomationEditor'
 import { redirect } from 'next/navigation'
@@ -19,14 +20,16 @@ export default async function AutomationEditorPage({
   const automation = await getAutomation(params.orgSlug, params.id)
   if (!automation) redirect(`/app/${params.orgSlug}/automacoes`)
 
-  const [forms, pipelinesAndStages, runs, stepStats, waTemplates, org] = await Promise.all([
+  const [forms, pipelinesAndStages, runs, stepStats, waTemplates, org, agentDefinitionsRes] = await Promise.all([
     getForms(params.orgSlug),
     getPipelinesAndStages(params.orgSlug),
     getAutomationRuns(params.orgSlug, automation.id),
     getStepStats(params.orgSlug, automation.id).catch(() => ({})),
     getWaTemplates(params.orgSlug).then(ts => ts.filter(t => t.status === 'approved')).catch(() => []),
     getCurrentOrganization(params.orgSlug),
+    listAgentDefinitions(params.orgSlug).catch(() => ({ ok: false as const, error: '' })),
   ])
+  const agentDefinitions = agentDefinitionsRes.ok ? agentDefinitionsRes.items.filter(a => a.is_active) : []
 
   return (
     <AutomationEditor
@@ -37,6 +40,7 @@ export default async function AutomationEditorPage({
       runs={runs}
       stepStats={stepStats}
       whatsappTemplates={waTemplates}
+      agentDefinitions={agentDefinitions}
       niche={org.niche}
     />
   )

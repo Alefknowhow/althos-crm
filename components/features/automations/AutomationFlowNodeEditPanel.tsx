@@ -18,7 +18,7 @@ import { useDraggablePosition } from './useDraggablePanel'
 const PANEL_WIDTH = 440
 
 export default function AutomationFlowNodeEditPanel({
-  kind, auto, setAuto, step, index, steps, setSteps, forms, stages, whatsappTemplates, niche,
+  kind, auto, setAuto, step, index, steps, setSteps, forms, stages, whatsappTemplates, agentDefinitions, niche,
   flowEdges, setStepEdges, onDeleteStep, onClose, anchor,
 }: {
   kind: 'trigger' | 'step'
@@ -31,6 +31,7 @@ export default function AutomationFlowNodeEditPanel({
   forms: FormOpt[]
   stages: StageOpt[]
   whatsappTemplates?: WaTemplate[]
+  agentDefinitions?: { id: string; name: string }[]
   niche?: string | null
   flowEdges: AutomationFlowEdge[]
   setStepEdges: (stepId: string, edges: AutomationFlowEdge[]) => void
@@ -79,6 +80,7 @@ export default function AutomationFlowNodeEditPanel({
           setSteps={setSteps}
           stages={stages}
           whatsappTemplates={whatsappTemplates}
+          agentDefinitions={agentDefinitions}
           flowEdges={flowEdges}
           setStepEdges={setStepEdges}
         />

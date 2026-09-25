@@ -64,7 +64,7 @@ export async function invokeAgentDefinition(opts: InvokeAgentDefinitionOptions):
   try {
     result = await respondAsAttendant(
       {
-        personaPrompt: buildPersonaPromptFromDefinition(definition),
+        personaPrompt: buildPersonaPromptFromDefinition(definition, { runtimeObjective: runtimeContext.objective }),
         businessContext: formatBusinessContext(businessContext),
         knowledgeBase: libraryItemsToKnowledgeBase(libraryItems),
         handoffPhrases: [],
