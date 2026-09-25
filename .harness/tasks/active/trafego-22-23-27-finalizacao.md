@@ -13,6 +13,7 @@
 > 5. Passos marcados **❓ CHECKPOINT** exigem rodar a query/verificação indicada antes; se o resultado divergir do esperado, parar e perguntar ao usuário.
 > 6. Nunca editar migration já aplicada. Próximo número livre hoje: **0285** (confira `ls supabase/migrations | tail -1`). Aplicar via `mcp__Supabase__apply_migration` com `project_id: boggtwpywbkpzkmvnbng` e **também** criar o arquivo `.sql` idêntico no repo.
 > 7. Ao terminar cada fase, atualizar a seção "Progresso" deste arquivo e marcar checkboxes nas issues.
+> 8. **Abas internas de módulo** (Biblioteca, Portal, Contas etc.) seguem o padrão visual definido pelo usuário em `docs/design-refs/reservas/abas-internas-modulo.png`: usar `components/design/ModuleTabs.tsx`. Se ainda não existir, criá-lo conforme o passo **C.1** do plano irmão `issues-15-57-58-59-60-plano.md` (primeiro commit que precisar dele), e o outro plano apenas reaproveita.
 
 ---
 

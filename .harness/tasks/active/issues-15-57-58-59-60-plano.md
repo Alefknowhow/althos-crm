@@ -114,24 +114,57 @@ Premissa corrigida: legado vazio → **não há migração de dados**; o trabalh
 
 ---
 
-## Fase C — #59 item 1: Vouchers reorganizados
+## Fase C — #59 item 1 + redesign das abas da Reserva (referências do usuário)
 
-### C.1 Referência visual
-- **❓ CHECKPOINT**: a issue **#11** tem 3 imagens (anexos `github.com/user-attachments/...`): **1ª = aba Produtos** (já aplicada), **2ª (945×406) = referência de Vouchers** (esta fase), **3ª = guia geral da tela de Reserva** (nunca aplicada — fora deste plano, anotar como follow-up). Tentar abrir a 2ª; se a sessão não conseguir (anexo exige auth), **pedir ao usuário que cole o print da 2ª imagem** — ele já foi avisado disso (2026-09-25).
+**Referências visuais (fornecidas pelo usuário em 2026-09-25, versionadas no repo — abrir com Read antes de começar):**
+- `docs/design-refs/reservas/abas-internas-modulo.png` — **padrão global de abas horizontais internas dos módulos** (segmented control).
+- `docs/design-refs/reservas/aba-produtos.png` — aba Produtos.
+- `docs/design-refs/reservas/aba-viajantes.png` — aba Viajantes.
+- `docs/design-refs/reservas/aba-vouchers.png` — aba Vouchers.
 
-### C.2 Modelo de dados (sem tabela nova)
-- Estender o item do jsonb `travel_sales.vouchers` de `{name,url}` para `{ id, name, url, product_id?, kind?: 'hotel'|'aereo'|'transfer'|'passeio'|'seguro'|'outro', status?: 'recebido'|'conferido'|'enviado_cliente', uploaded_at?, source?: 'upload'|'agente' }` — todos opcionais, **retrocompatível** (itens antigos sem os campos continuam válidos). `id` gerado no client (`crypto.randomUUID()`) ao editar/criar; itens legados ganham `id` na primeira edição.
-- Tipo TS central em `lib/travel/vouchers.ts` + normalizador `normalizeVoucherItems(json)` (tolera formato antigo). Teste Vitest do normalizador.
-- `product_id` referencia os produtos da reserva (`sale_products`? — **conferir** a tabela real usada pela aba Produtos, `SaleProductInlineForm.tsx`).
-- Não mudar storage (continua `uploadSaleVoucher` → `form-assets` público) — decisão documentada: URLs de voucher são entregues ao cliente e precisam ser permanentes; migração para R2 exigiria rota proxy com token. Fora de escopo.
+Regra do usuário: **copiar layout e organização; manter os campos e a estrutura de dados atuais** (não remover campo nenhum só porque não aparece na imagem). As imagens são tema escuro/claro de mock — implementar com tokens (`bg-muted`, `bg-background`, `text-muted-foreground`, `border`), funcionando nos dois temas; nada de hex hardcoded (exceto as cores de identificação por tipo de produto, ver C.3).
 
-### C.3 UI
-- `TravelSalesViewSaleEditorVouchersTab.tsx`: agrupar por produto ("Hotel X", "Aéreo LATAM", "Sem produto vinculado"), cada voucher com ícone por tipo de arquivo, nome, **status com ícone+texto** (não só cor), select de produto vinculado, ações (baixar, extrair dados — manter `VoucherExtractDialog`, remover). Seguir a referência visual da C.1.
-- `voucher_entregue_at` (checklist): marcar quando todos os vouchers estiverem `enviado_cliente` **ou** manter o comportamento atual — conferir onde é setado hoje e não quebrar.
-- Vouchers continuam separados de Contratos (critério) — nada de renomear.
+Arquivos atuais (em `components/features/proposals/`): `TravelSalesViewSaleEditor.tsx` (define as abas, linhas ~240), `...DadosTab.tsx`, `...ViajantesTab.tsx`, `...VouchersTab.tsx`, `...Header.tsx`; Produtos usa `SaleProductInlineForm.tsx` (grep a localização). Abas hoje: Dados da reserva · Viajantes · Vouchers · Tarefas · Produtos.
 
-### C.4 Fechamento
-- Fechar **#59**.
+### C.1 Componente global de abas internas (padrão do Design System)
+- Descrição da referência: container arredondado (`rounded-xl`) com fundo sutil (`bg-muted`), padding ~4px; triggers só texto (sem ícone), `text-sm`, cor `text-muted-foreground`; **ativo** = pílula preenchida `bg-background` (ou `bg-secondary` no escuro) com `shadow-sm`, texto `text-foreground font-medium`, `rounded-lg`; sem underline.
+- `components/ui/` é gerado (shadcn) — **não editar `tabs.tsx`**. Criar `components/design/ModuleTabs.tsx` exportando `ModuleTabs`, `ModuleTabsList`, `ModuleTabsTrigger`, `ModuleTabsContent` que envolvem os primitives de `@/components/ui/tabs` só com `className`. Rolagem horizontal em telas estreitas (`overflow-x-auto`, sem quebrar linha).
+- Aplicar na Reserva (C.2). **Adoção nos demais módulos** (Biblioteca, Contratos, Portal, Voice — a própria referência é da tela de Voice: Visão geral / Chamadas / Agente de Voice AI / Números / SMS): fazer num commit separado, trocando só os `TabsList`/`TabsTrigger` de navegação interna de módulo (não diálogos/formulários). Listar com `grep -rn "TabsList" app components/features` e trocar os que são navegação de página. Registrar o padrão no CLAUDE.md (seção Design System).
+
+### C.2 Ordem e shell das abas da Reserva
+- Nova ordem (numeração da referência): **Dados da reserva · Produtos · Viajantes · Vouchers · Tarefas** (Tarefas não aparece na referência → fica por último, mantida).
+- Trocar para `ModuleTabs`. Manter contagem em Viajantes (ex.: "Viajantes 4") como texto discreto.
+- Referência mostra cada aba como **seção em card branco arredondado** (`rounded-2xl border bg-card p-4`) com título pequeno em caixa-alta cinza (`text-xs font-semibold uppercase tracking-wide text-muted-foreground`), ex.: "PRODUTOS (HABILITADOS CONFORME A ABA 1)" — o "habilitados conforme a Aba 1" indica que os tipos de produto disponíveis dependem do que foi marcado em Dados: **conferir** se isso já existe (`services`/`included_items` em `travel_sales`); se existir, filtrar os tipos oferecidos no "+ Adicionar produto"; se não existir, **não inventar regra** — anotar.
+
+### C.3 Aba Produtos (layout da referência, campos atuais)
+- Um **card por produto** (`rounded-xl bg-muted/50 p-4`), empilhados com gap, dentro do card da seção.
+- Header do card: **ícone em quadrado arredondado colorido** (≈28px, ícone branco) + nome do tipo em negrito; à direita, **chip** de estado OCR quando aplicável: "Leitura OCR disponível" (tipo suporta OCR e ainda não foi lido) / "Preenchido via OCR do voucher" (dados vieram de OCR) — só se o dado de origem existir hoje; **conferir** se há flag de origem OCR no produto (grep `ocr` em `SaleProductInlineForm`/actions de produto). Se não houver, mostrar só "Leitura OCR disponível" para tipos com extrator (aéreo: `lib/ai/flight-ocr-extract.ts`; hospedagem/outros: `VoucherExtractDialog`) e anotar.
+- Cores por tipo (identidade de categoria, única exceção permitida a cor fixa — definir num mapa central `lib/travel/product-types.ts` junto com ícone e label): Aéreo = azul (Plane), Hospedagem = verde (Home/BedDouble), Transfer = laranja (Car), Seguro viagem = rosa (ShieldPlus/Umbrella), Cruzeiro = ciano (Ship), Ingressos/Passeios = roxo (Ticket), Outros = cinza (Package). Manter **todos os tipos já suportados** (conferir a lista real).
+- Corpo: **grid de 4 colunas** (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3`), cada campo = label pequeno (`text-xs text-muted-foreground`) + **campo preenchido com fundo** (`bg-background` ou `bg-muted`, `rounded-md`, sem borda forte, `h-9`). **Os campos são editáveis no próprio card** (a referência mostra os valores já dentro dos inputs, sem modo "ver/editar"): substituir o padrão atual expandir-para-editar por inputs sempre visíveis, com **salvamento por card** (botão "Salvar" que aparece só quando o card está sujo, + atalho Enter) — não salvar a cada tecla. Remover/ações secundárias num menu `⋯` no header do card.
+- Campos = **exatamente os atuais de cada tipo** (mapear em `SaleProductInlineForm.tsx` antes de reescrever; checklist campo a campo no commit). Exemplos da referência só orientam ordem/agrupamento: Aéreo (Cia, Nº voo, Localizador, Origem→Destino, Saída, Chegada); Hospedagem (Hotel, Categoria do quarto, Regime, Check-in, Check-out); Transfer (Telefone, Retirada, Retorno, Ponto de encontro); Seguro (Seguradora, Nº apólice, Cobertura, Vigência).
+- Rodapé: botão largura total **tracejado** `+ Adicionar produto` (`border-dashed rounded-xl text-muted-foreground`), abrindo seletor de tipo (popover com os tipos + ícones coloridos) que cria o card vazio em modo editável.
+- Extrair componentes para não passar de 350 linhas: `ProductCard.tsx`, `ProductFieldsGrid.tsx`, `AddProductButton.tsx`.
+
+### C.4 Aba Viajantes (layout da referência)
+- Tabela dentro de container `rounded-xl bg-muted/50`: colunas **NOME · DOCUMENTO · NASCIMENTO · TELEFONE** (cabeçalho `text-xs uppercase text-muted-foreground`), linhas com divisor sutil, nome em negrito, documento com prefixo do tipo (`CPF 111.222.333-44`), datas `dd/mm/aaaa`, "—" quando vazio.
+- Manter os campos atuais do jsonb `travelers` (conferir chaves reais — pode haver mais que os 4 da referência: e-mail, passaporte, validade, observação); os extras ficam num expandir por linha ou no editor da linha, **não somem**.
+- Edição: clique na linha abre edição inline (mesma lógica de salvar por linha dos produtos) ou o diálogo atual se for pequeno — preferir inline.
+- Rodapé: botão tracejado `+ Adicionar viajante`. Manter `travelers_note`.
+
+### C.5 Aba Vouchers (layout da referência) — fecha #59 item 1
+- Tabela no mesmo estilo: colunas **DATA · ARQUIVO · FORNECEDOR · STATUS · (ação baixar)**. Data curta (`10 set.`), arquivo em negrito, fornecedor em texto normal, status como **badge com texto** (`Processado` verde, `Processando` âmbar, `Pendente` cinza, `Erro` vermelho — texto sempre presente, nunca só cor), ícone de download à direita. Ações extras (extrair dados, remover, vincular produto) num menu `⋯` por linha.
+- Rodapé com **dois botões lado a lado**: à esquerda, largo e tracejado, `+ Add voucher (original do fornecedor)` → upload atual (`uploadSaleVoucher`, mantém bucket `form-assets`); à direita, botão primário de destaque `Gerar voucher white label` (ícone de documento) → **conferir** o fluxo existente `VoucherPrintView.tsx`/`VoucherPrintSections.tsx` (é o voucher com a marca da agência) e ligar o botão a ele. Se o destaque roxo da referência não for a cor primária do tema, usar `bg-primary` (não hardcode) — ou `variant` de destaque se o design system tiver.
+- **Dados** (extensão retrocompatível do jsonb `travel_sales.vouchers`, hoje itens só `{name, url}`): `{ id, name, url, uploaded_at?, supplier?, product_id?, processing_status?: 'pendente'|'processando'|'processado'|'erro', source?: 'upload'|'agente' }`. Tipo + normalizador em `lib/travel/vouchers.ts` (tolera formato antigo; item legado sem `uploaded_at` mostra "—", sem status mostra "Processado" se já tiver dados extraídos associados, senão "Pendente" — definir a regra lendo como a extração grava hoje). Teste Vitest do normalizador.
+- **Fornecedor**: preenchido pela extração/OCR quando disponível (`VoucherExtractDialog`/`VoucherUploadWithOcr` — ver o que já retornam: cia aérea, hotel, seguradora) ou pelo produto vinculado (`product_id` → fornecedor do produto); editável manualmente no menu `⋯`.
+- **Status "Processando"**: setar ao iniciar a extração e "Processado"/"Erro" ao terminar — **só se a extração for assíncrona hoje**; se for síncrona no diálogo, o estado "Processando" aparece só durante o upload+OCR na UI (não persistir estado transitório). Conferir.
+- Não mudar storage (continua `form-assets` público): URLs de voucher são entregues ao cliente e precisam ser permanentes; migrar para R2 exigiria rota proxy com token — fora de escopo, documentado.
+- `voucher_entregue_at` (checklist): conferir onde é setado hoje e **não** mudar a regra.
+- Vouchers continuam separados de Contratos — nada de renomear.
+
+### C.6 Fechamento
+- Validação visual: comparar lado a lado com os 4 PNGs de `docs/design-refs/reservas/` (subir o dev server se possível e tirar screenshot com Playwright — Chromium está em `/opt/pw-browsers`; login exige credencial: se não houver, validar por leitura e dizer isso explicitamente ao usuário).
+- Responsivo: grid de 4 colunas colapsa para 2/1; tabelas com `overflow-x-auto`.
+- Fechar **#59**. Comentar no #11 (fechada) que a 3ª imagem original ("guia geral da Reserva") foi parcialmente coberta por este redesign das abas.
 
 ---
 
@@ -197,7 +230,7 @@ Premissa corrigida: legado vazio → **não há migração de dados**; o trabalh
 ---
 
 ## Ordem de commits sugerida
-A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (fecha #60) · C.2 · C.3 · (fecha #59) · D.1 · D.2 · D.3 · E.1 · E.2 · E.3 · (fecha #58) · D.4 (último; #57 aguarda QA).
+A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (fecha #60) · C.1 (ModuleTabs) · C.2 · C.3 · C.4 · C.5 · C.1b (adoção de ModuleTabs nos outros módulos) · (fecha #59) · D.1 · D.2 · D.3 · E.1 · E.2 · E.3 · (fecha #58) · D.4 (último; #57 aguarda QA).
 
 ## Riscos
 - **B.3/B.4** mexem no fluxo de contrato de Reservas em produção (checklist `contrato_gerado_at`/`contrato_assinado_at`) — por isso sincronizar esses timestamps a partir do módulo global antes de remover o fluxo antigo, e checkpoint de contagem imediatamente antes.
@@ -212,7 +245,7 @@ A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (f
 |---|---|---|---|
 | A (#15) | pendente | | |
 | B (#60, #59.2) | pendente | | |
-| C (#59.1) | pendente | | |
+| C (#59.1 + redesign Reserva + ModuleTabs) | pendente | | refs em docs/design-refs/reservas/ |
 | D.1–D.3 | pendente | | |
 | E (#58) | pendente | | |
 | D.4 | pendente | | aguarda QA manual do usuário |
