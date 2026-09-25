@@ -5,11 +5,22 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LogOut, FileText, Image as ImageIcon, Loader2, FolderOpen } from 'lucide-react'
+import { LogOut, FileText, Image as ImageIcon, Loader2, FolderOpen, Megaphone } from 'lucide-react'
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
-import { portalLogout, getPortalReportUrl, getOrCreatePortalAssetLink, type PortalLibraryAsset } from '@/actions/client-portal'
+import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
+import {
+  getOrCreatePortalAssetLink,
+  type PortalLibraryAsset, type PortalAdAccount, type PortalCampaign, type PortalConversion,
+} from '@/actions/client-portal-data'
 import type { ClientPerformanceSummary } from '@/actions/trafego-performance'
+import PortalConversionsCard from './PortalConversionsCard'
+
+const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  active: { label: 'Ativa', className: 'bg-green-100 text-green-800 border-green-200' },
+  paused: { label: 'Pausada', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  archived: { label: 'Arquivada', className: 'bg-muted text-muted-foreground' },
+}
 
 type Report = { id: string; filename: string | null; created_at: string; period_start: string | null; period_end: string | null }
 type Creative = { id: string; title: string; media_type: string; status: string; public_token: string | null; created_at: string }
@@ -33,7 +44,7 @@ const LIBRARY_KIND_LABEL: Record<string, string> = { bruto: 'Material bruto', pr
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, reports, creatives, libraryAssets,
+  contatoId, clientName, orgName, overview, reports, creatives, libraryAssets, adAccounts, campaigns, conversions,
 }: {
   contatoId: string
   clientName: string
@@ -42,6 +53,9 @@ export default function PortalDashboard({
   reports: Report[]
   creatives: Creative[]
   libraryAssets: PortalLibraryAsset[]
+  adAccounts: PortalAdAccount[]
+  campaigns: PortalCampaign[]
+  conversions: PortalConversion[]
 }) {
   const router = useRouter()
   const [openingAssetId, setOpeningAssetId] = useState<string | null>(null)
@@ -81,8 +95,10 @@ export default function PortalDashboard({
         <Tabs defaultValue="visao-geral">
           <TabsList>
             <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
+            <TabsTrigger value="contas">Contas</TabsTrigger>
             <TabsTrigger value="criativos">Aprovação de Criativos</TabsTrigger>
             <TabsTrigger value="biblioteca">Biblioteca</TabsTrigger>
+            <TabsTrigger value="conversoes">Conversões</TabsTrigger>
             <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           </TabsList>
 
@@ -96,6 +112,63 @@ export default function PortalDashboard({
                 <Kpi label="Receita" value={formatCurrency(overview.revenueCents)} />
                 <Kpi label="CPL" value={overview.cplCents != null ? formatCurrency(overview.cplCents) : '—'} />
                 <Kpi label="ROAS" value={overview.roas != null ? `${overview.roas.toFixed(1)}x` : '—'} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contas" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Megaphone className="w-4 h-4" /> Contas de anúncio</CardTitle></CardHeader>
+              <CardContent>
+                {adAccounts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma conta vinculada ainda.</p>
+                ) : (
+                  <div className="divide-y">
+                    {adAccounts.map(a => (
+                      <div key={a.id} className="flex items-center justify-between py-2 text-sm">
+                        <span className="font-medium">{a.name}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{a.provider} · {a.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Campanhas (30 dias)</CardTitle></CardHeader>
+              <CardContent>
+                {campaigns.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma campanha nesse período.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+                          <th className="py-2 pr-3 font-medium">Campanha</th>
+                          <th className="py-2 pr-3 font-medium">Status</th>
+                          <th className="py-2 pr-3 font-medium text-right">Investimento</th>
+                          <th className="py-2 pr-3 font-medium text-right">Leads</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {campaigns.map(c => {
+                          const status = CAMPAIGN_STATUS_LABEL[c.status] || CAMPAIGN_STATUS_LABEL.active
+                          return (
+                            <tr key={c.id}>
+                              <td className="py-2 pr-3">
+                                <div className="font-medium truncate max-w-[220px]">{c.name}</div>
+                                <div className="text-xs text-muted-foreground">{c.ad_accounts?.name || '—'}</div>
+                              </td>
+                              <td className="py-2 pr-3"><Badge variant="outline" className={status.className}>{status.label}</Badge></td>
+                              <td className="py-2 pr-3 text-right tabular-nums font-medium">{formatCurrency(c.metrics.spend_cents)}</td>
+                              <td className="py-2 pr-3 text-right tabular-nums">{c.metrics.leads || '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -159,6 +232,10 @@ export default function PortalDashboard({
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="conversoes" className="mt-4">
+            <PortalConversionsCard contatoId={contatoId} initial={conversions} />
           </TabsContent>
 
           <TabsContent value="relatorios" className="mt-4">

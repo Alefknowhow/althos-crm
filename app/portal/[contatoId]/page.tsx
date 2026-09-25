@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
-import { requirePortalAccess, getPortalOverview, listPortalReports, listPortalCreatives, listPortalLibraryAssets } from '@/actions/client-portal'
+import { requirePortalAccess, getPortalOverview, listPortalReports } from '@/actions/client-portal'
+import {
+  listPortalCreatives, listPortalLibraryAssets, listPortalAdAccounts, listPortalCampaigns, listPortalConversions,
+} from '@/actions/client-portal-data'
 import PortalDashboard from '@/components/features/portal/PortalDashboard'
 
 export const dynamic = 'force-dynamic'
@@ -15,11 +18,14 @@ export default async function PortalClientPage({ params }: { params: { contatoId
     redirect('/portal/login')
   }
 
-  const [overview, reports, creatives, libraryAssets] = await Promise.all([
+  const [overview, reports, creatives, libraryAssets, adAccounts, campaigns, conversions] = await Promise.all([
     getPortalOverview(params.contatoId),
     listPortalReports(params.contatoId),
     listPortalCreatives(params.contatoId),
     listPortalLibraryAssets(params.contatoId),
+    listPortalAdAccounts(params.contatoId),
+    listPortalCampaigns(params.contatoId),
+    listPortalConversions(params.contatoId),
   ])
 
   return (
@@ -31,6 +37,9 @@ export default async function PortalClientPage({ params }: { params: { contatoId
       reports={reports}
       creatives={creatives}
       libraryAssets={libraryAssets}
+      adAccounts={adAccounts}
+      campaigns={campaigns}
+      conversions={conversions}
     />
   )
 }

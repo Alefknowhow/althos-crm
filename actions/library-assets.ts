@@ -7,6 +7,7 @@ import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import { uploadFile } from '@/actions/storage-upload'
 import { StorageService } from '@/lib/storage'
+import { getResend, clientEmailFrom } from '@/lib/resend'
 
 /**
  * Biblioteca de Tráfego (issue #23) — materiais brutos e criativos
@@ -273,6 +274,38 @@ export async function generateAssetLink(orgSlug: string, id: string, rotate = fa
 
   revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${a.contato_id}`)
   return { ok: true as const, token }
+}
+
+/** Reenvia o link de aprovação por e-mail — gera o token se ainda não
+ *  existir (mesmo helper de generateAssetLink), issue #23 item 4. */
+export async function sendAssetLinkByEmail(orgSlug: string, assetId: string, toEmail: string) {
+  const { org } = await requireAccess(orgSlug)
+  const supabase = createClient()
+
+  const { data: asset } = await supabase
+    .from('library_assets').select('id, title, public_token')
+    .eq('id', assetId).eq('organization_id', org.id).maybeSingle()
+  if (!asset) return { ok: false as const, error: 'Material não encontrado.' }
+
+  let token = asset.public_token
+  if (!token) {
+    token = Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => b.toString(16).padStart(2, '0')).join('')
+    const { error } = await supabase.from('library_assets').update({ public_token: token }).eq('id', assetId)
+    if (error) return { ok: false as const, error: error.message }
+  }
+
+  const link = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.althoscrm.com.br'}/biblioteca/${token}`
+  try {
+    await getResend().emails.send({
+      from: clientEmailFrom(org.name),
+      to: toEmail,
+      subject: `Aprovação — ${asset.title}`,
+      html: `<p>Olá! Segue o link para revisar e aprovar "${asset.title}":</p><p><a href="${link}">${link}</a></p>`,
+    })
+    return { ok: true as const }
+  } catch (e: any) {
+    return { ok: false as const, error: e?.message || 'Erro ao enviar e-mail.' }
+  }
 }
 
 /** Só apaga a versão mais recente de uma cadeia (nunca uma versão do meio,

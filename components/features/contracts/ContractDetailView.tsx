@@ -44,10 +44,15 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
   }, [orgSlug, contract.related_entity_type, contract.related_entity_id])
 
   const editable = contract.status === 'draft'
-  const canSend = (contract.status === 'draft' || contract.status === 'ready')
-    && (contract.contract_signers?.length || 0) > 0
-    && !!contract.body_html
-    && !editingBody
+  const statusAllowsSend = contract.status === 'draft' || contract.status === 'ready'
+  const hasSigners = (contract.contract_signers?.length || 0) > 0
+  const hasBody = !!contract.body_html
+  const canSend = statusAllowsSend && hasSigners && hasBody && !editingBody
+  const sendBlockedReason = !statusAllowsSend
+    ? null // já enviado/assinado/cancelado — nada a fazer aqui
+    : !hasBody ? 'Escolha um modelo ou edite o conteúdo do contrato antes de enviar.'
+    : !hasSigners ? 'Adicione pelo menos 1 signatário abaixo antes de enviar.'
+    : null
   const canCheck = !!contract.autentique_document_id && contract.status !== 'signed' && contract.status !== 'cancelled'
 
   function reload() {
@@ -136,11 +141,14 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {canSend && (
-          <Button type="button" size="sm" onClick={handleGenerateAndSend} disabled={sending}>
+        {statusAllowsSend && (
+          <Button type="button" size="sm" onClick={handleGenerateAndSend} disabled={sending || !canSend} title={sendBlockedReason || undefined}>
             {sending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Send className="w-4 h-4 mr-1.5" />}
             Gerar e enviar para assinatura
           </Button>
+        )}
+        {statusAllowsSend && sendBlockedReason && (
+          <p className="text-xs text-muted-foreground basis-full">{sendBlockedReason}</p>
         )}
         {canCheck && (
           <Button type="button" size="sm" variant="outline" onClick={handleCheckStatus} disabled={checking}>

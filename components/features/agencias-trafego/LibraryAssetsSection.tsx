@@ -9,9 +9,12 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, Link2, Trash2, FileText, Image as ImageIcon, Video, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Plus, Link2, Mail, Trash2, FileText, Image as ImageIcon, Video, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { uploadLibraryAsset, addAssetComment, generateAssetLink, deleteLatestAssetVersion, type LibraryAssetChain } from '@/actions/library-assets'
+import {
+  uploadLibraryAsset, addAssetComment, generateAssetLink, sendAssetLinkByEmail, deleteLatestAssetVersion,
+  type LibraryAssetChain,
+} from '@/actions/library-assets'
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pendente: { label: 'Aguardando aprovação', cls: 'bg-amber-100 text-amber-700' },
@@ -62,17 +65,28 @@ export default function LibraryAssetsSection({
           <p className="text-sm text-muted-foreground">Nenhum material enviado ainda.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {chains.map(chain => (
-            <AssetChainCard
-              key={chain.rootAssetId}
-              orgSlug={orgSlug}
-              chain={chain}
-              onReload={reload}
-              onNewVersion={() => { setVersionTarget({ rootAssetId: chain.rootAssetId, latestId: chain.latest.id }); setUploadOpen(true) }}
-            />
-          ))}
-        </div>
+        <>
+          {(['bruto', 'produzido'] as const).map(kind => {
+            const group = chains.filter(c => c.latest.kind === kind)
+            if (group.length === 0) return null
+            return (
+              <div key={kind} className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{KIND_LABEL[kind]}s</p>
+                <div className="space-y-3">
+                  {group.map(chain => (
+                    <AssetChainCard
+                      key={chain.rootAssetId}
+                      orgSlug={orgSlug}
+                      chain={chain}
+                      onReload={reload}
+                      onNewVersion={() => { setVersionTarget({ rootAssetId: chain.rootAssetId, latestId: chain.latest.id }); setUploadOpen(true) }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </>
       )}
 
       <UploadAssetDialog
@@ -94,6 +108,9 @@ function AssetChainCard({
   const [commentBody, setCommentBody] = useState('')
   const [savingComment, setSavingComment] = useState(false)
   const [generatingLink, setGeneratingLink] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
   const status = STATUS_LABEL[chain.latest.status] || STATUS_LABEL.pendente
 
   async function handleComment() {
@@ -114,6 +131,17 @@ function AssetChainCard({
     const url = `${window.location.origin}/biblioteca/${res.token}`
     await navigator.clipboard.writeText(url)
     toast.success('Link de aprovação copiado.')
+  }
+
+  async function handleSendEmail() {
+    if (!email.trim()) { toast.error('Informe o e-mail.'); return }
+    setSendingEmail(true)
+    const res = await sendAssetLinkByEmail(orgSlug, chain.latest.id, email.trim())
+    setSendingEmail(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Link enviado por e-mail.')
+    setEmailOpen(false)
+    setEmail('')
   }
 
   async function handleDeleteLatest() {
@@ -162,6 +190,9 @@ function AssetChainCard({
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={handleLink} disabled={generatingLink}>
           {generatingLink ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Link2 className="w-3.5 h-3.5 mr-1" />} Link de aprovação
         </Button>
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEmailOpen(true)}>
+          <Mail className="w-3.5 h-3.5 mr-1" /> Enviar por e-mail
+        </Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={handleDeleteLatest}>
           <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
         </Button>
@@ -187,6 +218,19 @@ function AssetChainCard({
           </div>
         </div>
       )}
+
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Enviar por e-mail</DialogTitle></DialogHeader>
+          <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="cliente@email.com" />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEmailOpen(false)} disabled={sendingEmail}>Cancelar</Button>
+            <Button type="button" onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : null} Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
