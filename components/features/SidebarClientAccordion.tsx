@@ -12,6 +12,7 @@ const SUB_ITEMS = [
   { key: 'estrategia', label: 'Estratégia' },
   { key: 'campanhas', label: 'Estrutura de Campanhas' },
   { key: 'criativos', label: 'Criativos' },
+  { key: 'biblioteca', label: 'Biblioteca' },
   { key: 'conversoes', label: 'Conversões' },
   { key: 'inteligencia', label: 'Inteligência' },
   { key: 'projetos', label: 'Projetos' },
