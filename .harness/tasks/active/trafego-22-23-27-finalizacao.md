@@ -76,6 +76,7 @@ Critérios de aceite do #23 ainda não atendidos: upload pelo cliente no Portal;
 - Card mostra a campanha vinculada.
 
 ### 1.4 Migrar legado `campaign_creatives` e o picker do plano de mídia
+- **Resultado já consultado em 2026-09-25: `campaign_creatives` = 0 linhas em produção** → caminho "ambos 0" (só trocar FK/picker, sem migração de dados). Re-confirmar a contagem na hora de executar.
 - **❓ CHECKPOINT**: rodar `select count(*) from campaign_creatives;` e `select count(*) from media_plan_items where creative_id is not null;` via `mcp__Supabase__execute_sql`.
   - Se **ambos 0**: pular migração de dados; fazer só a troca de FK (abaixo).
   - Se >0: migrar (abaixo). Se > ~500 linhas, parar e perguntar.
