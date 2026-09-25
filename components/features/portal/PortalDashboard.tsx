@@ -5,16 +5,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { LogOut, FileText, Loader2, FolderOpen, Megaphone } from 'lucide-react'
-import { useState } from 'react'
+import { LogOut, FileText, Megaphone } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
-import {
-  getOrCreatePortalAssetLink,
-  type PortalLibraryAsset, type PortalAdAccount, type PortalCampaign, type PortalConversion,
-} from '@/actions/client-portal-data'
+import { type PortalAdAccount, type PortalCampaign, type PortalConversion } from '@/actions/client-portal-data'
+import type { PortalLibraryAssetChain } from '@/actions/client-portal-library'
 import type { ClientPerformanceSummary } from '@/actions/trafego-performance'
 import PortalConversionsCard from './PortalConversionsCard'
+import PortalLibraryTab from './PortalLibraryTab'
 
 const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }> = {
   active: { label: 'Ativa', className: 'bg-green-100 text-green-800 border-green-200' },
@@ -24,44 +22,25 @@ const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }
 
 type Report = { id: string; filename: string | null; created_at: string; period_start: string | null; period_end: string | null }
 
-const LIBRARY_STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  pendente: { label: 'Aguardando sua aprovação', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  aprovado: { label: 'Aprovado', className: 'bg-green-100 text-green-800 border-green-200' },
-  alteracao_solicitada: { label: 'Alteração solicitada', className: 'bg-red-100 text-red-800 border-red-200' },
-}
-const LIBRARY_KIND_LABEL: Record<string, string> = { bruto: 'Material bruto', produzido: 'Criativo produzido' }
-
 /**
  * Interface simples de propósito — o cliente externo vê resultado + o que
  * precisa fazer, não a complexidade do gestor (spec § 26). Sem edição de
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, reports, libraryAssets, adAccounts, campaigns, conversions,
+  contatoId, clientName, orgName, overview, reports, libraryChains, adAccounts, campaigns, conversions,
 }: {
   contatoId: string
   clientName: string
   orgName: string
   overview: ClientPerformanceSummary
   reports: Report[]
-  libraryAssets: PortalLibraryAsset[]
+  libraryChains: PortalLibraryAssetChain[]
   adAccounts: PortalAdAccount[]
   campaigns: PortalCampaign[]
   conversions: PortalConversion[]
 }) {
   const router = useRouter()
-  const [openingAssetId, setOpeningAssetId] = useState<string | null>(null)
-
-  async function handleOpenAsset(asset: PortalLibraryAsset) {
-    if (asset.publicToken) {
-      window.open(`/biblioteca/${asset.publicToken}`, '_blank')
-      return
-    }
-    setOpeningAssetId(asset.id)
-    const res = await getOrCreatePortalAssetLink(contatoId, asset.id)
-    setOpeningAssetId(null)
-    if (res.ok) window.open(`/biblioteca/${res.token}`, '_blank')
-  }
 
   async function handleLogout() {
     await portalLogout()
@@ -165,34 +144,7 @@ export default function PortalDashboard({
           </TabsContent>
 
           <TabsContent value="biblioteca" className="mt-4">
-            <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Biblioteca</CardTitle></CardHeader>
-              <CardContent>
-                {libraryAssets.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhum material enviado ainda.</p>
-                ) : (
-                  <div className="divide-y">
-                    {libraryAssets.map(a => {
-                      const status = LIBRARY_STATUS_LABEL[a.status] || LIBRARY_STATUS_LABEL.pendente
-                      return (
-                        <div key={a.id} className="flex items-center justify-between py-2.5 text-sm gap-3">
-                          <div className="min-w-0">
-                            <span className="font-medium truncate block">{a.title}</span>
-                            <span className="text-xs text-muted-foreground">{LIBRARY_KIND_LABEL[a.kind]} · v{a.version}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                            <Button size="sm" variant="outline" onClick={() => handleOpenAsset(a)} disabled={openingAssetId === a.id}>
-                              {openingAssetId === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Ver e revisar'}
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PortalLibraryTab contatoId={contatoId} chains={libraryChains} />
           </TabsContent>
 
           <TabsContent value="conversoes" className="mt-4">

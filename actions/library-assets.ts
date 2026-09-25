@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { uploadFile } from '@/actions/storage-upload'
 import { StorageService } from '@/lib/storage'
 import { getResend, clientEmailFrom } from '@/lib/resend'
+import { insertLibraryAssetVersion } from '@/lib/library/insert-asset'
 
 /**
  * Biblioteca de Tráfego (issue #23) — materiais brutos e criativos
@@ -186,20 +187,6 @@ export async function uploadLibraryAsset(
 
   const supabase = createClient()
 
-  let rootAssetId: string | null = null
-  let nextVersion = 1
-  if (parsed.data.parentAssetId) {
-    const { data: parent } = await supabase
-      .from('library_assets')
-      .select('id, root_asset_id, version')
-      .eq('id', parsed.data.parentAssetId)
-      .eq('organization_id', org.id)
-      .maybeSingle()
-    if (!parent) return { ok: false as const, error: 'Versão anterior não encontrada.' }
-    rootAssetId = parent.root_asset_id
-    nextVersion = parent.version + 1
-  }
-
   const uploadResult = await uploadFile(orgSlug, {
     category: 'library',
     scopeId: parsed.data.contatoId,
@@ -209,37 +196,23 @@ export async function uploadLibraryAsset(
   })
   if (!uploadResult.ok) return { ok: false as const, error: uploadResult.error }
 
-  const { data: inserted, error } = await supabase
-    .from('library_assets')
-    .insert({
-      organization_id: org.id,
-      contato_id: parsed.data.contatoId,
-      campaign_id: parsed.data.campaignId || null,
-      kind: parsed.data.kind,
-      parent_asset_id: parsed.data.parentAssetId || null,
-      version: nextVersion,
-      storage_object_id: uploadResult.objectId,
-      title: parsed.data.title,
-      description: parsed.data.description || null,
-      width: parsed.data.width || null,
-      height: parsed.data.height || null,
-      created_by: user.id,
-    })
-    .select('id')
-    .single()
-  if (error || !inserted) return { ok: false as const, error: error?.message || 'Falha ao salvar asset.' }
-
-  // v1 aponta root_asset_id pra ela mesma — permite agrupar toda a cadeia
-  // com uma única query por root_asset_id (ver listAssetChains).
-  if (!rootAssetId) {
-    rootAssetId = inserted.id
-    await supabase.from('library_assets').update({ root_asset_id: rootAssetId }).eq('id', inserted.id)
-  } else {
-    await supabase.from('library_assets').update({ root_asset_id: rootAssetId }).eq('id', inserted.id)
-  }
+  const insertResult = await insertLibraryAssetVersion(supabase, {
+    organizationId: org.id,
+    contatoId: parsed.data.contatoId,
+    campaignId: parsed.data.campaignId,
+    kind: parsed.data.kind,
+    parentAssetId: parsed.data.parentAssetId,
+    storageObjectId: uploadResult.objectId,
+    title: parsed.data.title,
+    description: parsed.data.description,
+    width: parsed.data.width,
+    height: parsed.data.height,
+    createdBy: user.id,
+  })
+  if (!insertResult.ok) return { ok: false as const, error: insertResult.error }
 
   revalidatePath(`/app/${orgSlug}/agencias-trafego/trafego/${parsed.data.contatoId}`)
-  return { ok: true as const, id: inserted.id }
+  return { ok: true as const, id: insertResult.id }
 }
 
 export async function addAssetComment(orgSlug: string, assetId: string, body: string) {

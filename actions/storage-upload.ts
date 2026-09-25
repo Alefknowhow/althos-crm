@@ -9,17 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { StorageService, type StorageCategory } from '@/lib/storage'
 
-const MAX_UPLOAD_BYTES = 20 * 1024 * 1024 // 20MB — mesmo teto já usado pelos uploads existentes (whatsapp-media, instagram-media)
-
-const ALLOWED_MIME_BY_CATEGORY: Record<StorageCategory, string[]> = {
-  whatsapp: ['image/jpeg', 'image/png', 'image/webp', 'audio/ogg', 'audio/webm', 'audio/opus', 'audio/mpeg', 'audio/mp4', 'audio/aac', 'video/mp4', 'video/3gpp', 'application/pdf'],
-  instagram: ['image/jpeg', 'image/png', 'image/webp', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/aac'],
-  attachments: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'],
-  documents: ['application/pdf', 'image/jpeg', 'image/png'],
-  avatars: ['image/jpeg', 'image/png', 'image/webp'],
-  exports: ['text/csv', 'application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
-  library: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm', 'application/pdf'],
-}
+import { MAX_UPLOAD_BYTES, ALLOWED_MIME_BY_CATEGORY } from '@/lib/storage/mime'
 
 /**
  * Registra no banco um objeto já enviado pro provider (upload feito por
