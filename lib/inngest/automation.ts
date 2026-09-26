@@ -166,6 +166,11 @@ export const processAutomationEventTraffic = inngest.createFunction(
       // Sem relação com Tráfego — cabe aqui só porque as functions de
       // vertical viagens já estão no teto de 10 triggers (issue #15).
       { event: 'viagens.reserva.backoffice_assigned' },
+      // Módulo global de Contratos (issue #60, B.6) — sem relação com
+      // Tráfego, cabe aqui só porque as outras functions já estão no teto.
+      { event: 'contract.sent' },
+      { event: 'contract.signed' },
+      { event: 'contract.rejected' },
     ]
   },
   handleAutomationEvent,

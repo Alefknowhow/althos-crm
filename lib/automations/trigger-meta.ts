@@ -2,6 +2,7 @@ import {
   FileText, ArrowRightLeft, Tag, AlarmClock, Clock, Calendar, Gift,
   Stethoscope, Building2, Shield, Smile, DollarSign, Plane, PhoneCall,
   MessageSquareText, AtSign, CalendarClock, FolderOpen, CheckCircle2, Upload,
+  FileSignature, FileX,
   type LucideIcon,
 } from 'lucide-react'
 import type { NicheKey } from '@/lib/niche'
@@ -74,6 +75,14 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
 
   // Vertical Agências de Viagem — responsável operacional (issue #15).
   { id: 'viagens.reserva.backoffice_assigned', label: 'Responsável Operacional Definido (Viagens)', desc: 'Dispara quando o responsável operacional (backoffice) da reserva é definido/alterado', icon: Plane, color: '#0ea5e9', niche: 'viagens' },
+
+  // Módulo global de Contratos (issue #16/#60, B.6) — sem niche: disponível
+  // pra qualquer vertical. Só dispara quando dá pra resolver um contato
+  // (signatário vinculado a um Contato do CRM) — sem isso o motor de
+  // automação genérico não tem em quem aplicar o fluxo.
+  { id: 'contract.sent',     label: 'Contrato Enviado para Assinatura', desc: 'Dispara quando um contrato é enviado para assinatura', icon: FileSignature, color: '#7c3aed' },
+  { id: 'contract.signed',   label: 'Contrato Assinado',                desc: 'Dispara quando todos os signatários assinam o contrato', icon: FileSignature, color: '#7c3aed' },
+  { id: 'contract.rejected', label: 'Contrato Recusado',                desc: 'Dispara quando um signatário recusa o contrato',      icon: FileX,         color: '#7c3aed' },
 ]
 
 export function triggerMeta(type: string): TriggerTypeMeta {

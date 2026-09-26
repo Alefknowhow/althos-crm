@@ -16,12 +16,31 @@ import { uploadFile } from './storage-upload'
 import { createAutentiqueDocument, getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners, type AutentiqueSigner } from '@/lib/autentique'
 import { getResend, clientEmailFrom } from '@/lib/resend'
 import { revalidatePath } from 'next/cache'
+import { inngest } from '@/lib/inngest/client'
 
 async function requireContractsAccess(orgSlug: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'contracts')
   return { user, org, perm }
+}
+
+/** Resolve um contato pro motor de automação (issue #60, B.6) — o gatilho
+ *  genérico exige leadId; um contrato não tem contato direto (relaciona-se
+ *  por related_entity_type/id, que pode ser reserva/venda/oportunidade/
+ *  projeto), então usa o primeiro signatário vinculado a um Contato do CRM.
+ *  Sem isso, a automação simplesmente não dispara (handleAutomationEvent já
+ *  ignora eventos sem leadId). */
+async function resolveContractLeadId(supabase: ReturnType<typeof createClient>, contractId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('contract_signers')
+    .select('contato_id')
+    .eq('contract_id', contractId)
+    .not('contato_id', 'is', null)
+    .order('sort_order')
+    .limit(1)
+    .maybeSingle()
+  return data?.contato_id ?? null
 }
 
 /** Gera o PDF (client já converteu o HTML via html2canvas+jsPDF, mesmo
@@ -100,6 +119,11 @@ export async function sendContractForSignature(orgSlug: string, contractId: stri
     await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.sent', payload: { autentique_document_id: doc.id } })
     const { syncReservaContractTimestamps } = await import('./contracts-origin')
     await syncReservaContractTimestamps(supabase, contractId, 'generated')
+
+    const leadId = await resolveContractLeadId(supabase, contractId)
+    if (leadId) {
+      await inngest.send({ name: 'contract.sent', data: { orgId: org.id, leadId, contractId } })
+    }
   } catch (e: any) {
     return { ok: false as const, error: e?.message || 'Falha ao enviar para assinatura.' }
   }
@@ -172,6 +196,11 @@ export async function refreshContractStatus(orgSlug: string, contractId: string)
       await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.signed' })
       const { syncReservaContractTimestamps } = await import('./contracts-origin')
       await syncReservaContractTimestamps(supabase, contractId, 'signed')
+
+      const leadId = await resolveContractLeadId(supabase, contractId)
+      if (leadId) {
+        await inngest.send({ name: 'contract.signed', data: { orgId: org.id, leadId, contractId } })
+      }
     }
 
     revalidatePath(`/app/${orgSlug}/contratos/${contractId}`)

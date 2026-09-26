@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getAutentiqueDocumentStatus, isDocumentSignedByKnownSigners } from '@/lib/autentique'
 import { verifyStaticToken } from '@/lib/security/webhook'
 import { StorageService } from '@/lib/storage'
+import { inngest } from '@/lib/inngest/client'
 
 // Webhook global da Autentique — cada organização registra essa mesma URL no
 // próprio painel (Configurações de Desenvolvedor > Webhooks) usando sua conta.
@@ -137,6 +138,13 @@ async function handleGlobalContractEvent(
   await query
   await supabase.from('contracts').update({ status: 'rejected' }).eq('id', contract.id)
   await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.rejected', payload: signerEmail ? { email: signerEmail } : {} })
+
+  const { data: leadSigner } = await supabase
+    .from('contract_signers').select('contato_id').eq('contract_id', contract.id)
+    .not('contato_id', 'is', null).order('sort_order').limit(1).maybeSingle()
+  if (leadSigner?.contato_id) {
+    await inngest.send({ name: 'contract.rejected', data: { orgId: contract.organization_id, leadId: leadSigner.contato_id, contractId: contract.id } })
+  }
 }
 
 async function handleGlobalContractSigned(supabase: ReturnType<typeof createAdminClient>, documentId: string) {
@@ -195,6 +203,13 @@ async function handleGlobalContractSigned(supabase: ReturnType<typeof createAdmi
     await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.signed' })
     const { syncReservaContractTimestamps } = await import('@/actions/contracts-origin')
     await syncReservaContractTimestamps(supabase as any, contract.id, 'signed')
+
+    const { data: leadSigner } = await supabase
+      .from('contract_signers').select('contato_id').eq('contract_id', contract.id)
+      .not('contato_id', 'is', null).order('sort_order').limit(1).maybeSingle()
+    if (leadSigner?.contato_id) {
+      await inngest.send({ name: 'contract.signed', data: { orgId: contract.organization_id, leadId: leadSigner.contato_id, contractId: contract.id } })
+    }
   } catch (e) {
     console.error('autentique webhook: falha ao processar contrato global', e)
   }
