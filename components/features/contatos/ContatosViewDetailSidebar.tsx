@@ -25,7 +25,7 @@ import { WhatsAppGlyph } from '@/components/features/LeadCard'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
 import { addRelationship, deleteRelationship } from '@/actions/relationships'
-import { RELATIONSHIP_KINDS, RELATIONSHIP_LABELS, type RelationshipRow, type RelationshipKind } from '@/lib/relationships'
+import { RELATIONSHIP_LABELS, type RelationshipRow } from '@/lib/relationships'
 import { CONTATO_STATUS_META, CONTATO_SOURCE_EDIT_OPTIONS, contatoSourceLabel } from '@/lib/contatos'
 import { fmtDate, STATUS_VALUES, type Selected } from './ContatosViewShared'
 import { AvatarUploader } from './ContatosViewWidgets'
@@ -269,8 +269,8 @@ function QuickActionButton({
 function SidebarField({ label, value, className, clamp }: { label: string; value: string; className?: string; clamp?: boolean }) {
   return (
     <div className={`min-w-0 ${className || ''}`}>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</div>
-      <div className={`text-sm font-medium ${clamp ? 'line-clamp-2' : 'truncate'}`}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-medium mb-0.5">{label}</div>
+      <div className={`text-[13.5px] font-semibold text-foreground ${clamp ? 'line-clamp-2' : 'truncate'}`}>{value}</div>
     </div>
   )
 }
@@ -286,10 +286,9 @@ function ageFromBirthDate(d: string | null): number | null {
   return age
 }
 
-/** Pessoas relacionadas — grau de parentesco + idade (quando houver data de
- *  nascimento), no formato "Esposa · 34 anos". Mostra só as 3 primeiras na
- *  sidebar; o resto fica atrás de "Ver todos" (drawer), sem aumentar a
- *  altura da página. */
+/** Pessoas relacionadas — campo único de texto livre (sem grau/idade
+ *  estruturados). Mostra só as 3 primeiras na sidebar; o resto fica atrás
+ *  de "Ver todos" (drawer), sem aumentar a altura da página. */
 function RelatedPeople({ orgSlug, contatoId, initial }: { orgSlug: string; contatoId: string; initial: RelationshipRow[] }) {
   const router = useRouter()
   const [items, setItems] = useState<RelationshipRow[]>(initial)
@@ -359,15 +358,20 @@ function RelatedPeople({ orgSlug, contatoId, initial }: { orgSlug: string; conta
 }
 
 function RelatedPersonRow({ r, onRemove }: { r: RelationshipRow; onRemove: () => void }) {
+  // Vínculos antigos (com grau + idade) continuam mostrando essa segunda
+  // linha; vínculos novos são só texto livre, sem grau/idade a exibir.
   const age = ageFromBirthDate(r.related_birth_date)
   const kindLabel = RELATIONSHIP_LABELS[r.kind] || r.kind
+  const showMeta = r.kind !== 'outro' || age != null
   return (
     <div className="group flex items-center justify-between gap-2 text-sm">
       <div className="min-w-0">
         <div className="font-medium truncate">{r.related_name}</div>
-        <div className="text-xs text-muted-foreground truncate">
-          {kindLabel}{age != null ? ` · ${age} anos` : ''}
-        </div>
+        {showMeta && (
+          <div className="text-xs text-muted-foreground truncate">
+            {kindLabel}{age != null ? ` · ${age} anos` : ''}
+          </div>
+        )}
       </div>
       <button
         type="button"
@@ -392,31 +396,30 @@ function RelatedPeopleDialog({
   onCreated: (row: RelationshipRow) => void
   onRemove: (id: string) => void
 }) {
-  const [kind, setKind] = useState<RelationshipKind | ''>('')
-  const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('')
+  const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function add() {
-    if (!kind) { toast.error('Selecione o grau de parentesco.'); return }
-    if (!name.trim()) { toast.error('Informe o nome.'); return }
+    if (!text.trim()) { toast.error('Digite algo sobre a pessoa relacionada.'); return }
     setSaving(true)
+    // Sem grau/idade estruturados — tudo digitado livre vai pro nome do
+    // vínculo. 'outro' é só o valor fixo exigido pela coluna kind no banco.
     const res = await addRelationship(orgSlug, {
-      contatoId, kind, relatedName: name.trim(), relatedBirthDate: birthDate || null,
+      contatoId, kind: 'outro', relatedName: text.trim(), relatedBirthDate: null,
     })
     setSaving(false)
     if (!res.ok) { toast.error(res.error); return }
     onCreated({
       id: `tmp-${Date.now()}`,
-      kind,
+      kind: 'outro',
       note: null,
       related_contato_id: null,
-      related_name: name.trim(),
+      related_name: text.trim(),
       related_cpf: null,
-      related_birth_date: birthDate || null,
+      related_birth_date: null,
       created_at: new Date().toISOString(),
     })
-    setKind(''); setName(''); setBirthDate('')
+    setText('')
   }
 
   return (
@@ -428,23 +431,14 @@ function RelatedPeopleDialog({
 
         <div className="flex items-end gap-2 rounded-lg border p-3 bg-muted/20">
           <div className="flex-1 min-w-0 space-y-1">
-            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Grau</label>
-            <Select value={kind} onValueChange={v => setKind(v as RelationshipKind)}>
-              <SelectTrigger className="h-9"><SelectValue placeholder="Escolher..." /></SelectTrigger>
-              <SelectContent>
-                {RELATIONSHIP_KINDS.map(k => (
-                  <SelectItem key={k} value={k}>{RELATIONSHIP_LABELS[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-[1.5] min-w-0 space-y-1">
-            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Nome</label>
-            <Input value={name} onChange={e => setName(e.target.value)} className="h-9" />
-          </div>
-          <div className="w-[130px] space-y-1">
-            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Nascimento</label>
-            <Input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="h-9" />
+            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Pessoa relacionada</label>
+            <Input
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+              placeholder="Ex.: Esposa Maria, 34 anos, viaja junto"
+              className="h-9"
+            />
           </div>
           <Button size="sm" className="shrink-0" onClick={add} disabled={saving}>
             <Plus className="w-4 h-4" />
