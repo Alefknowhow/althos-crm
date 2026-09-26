@@ -90,6 +90,7 @@ function ContractRows({ orgSlug, contracts, emptyLabel, onNew }: {
 
 export default function ContractsListView({
   orgSlug, initialContracts, templates, hasAutentiqueKey, webhookUrl, recentEvents,
+  defaultOriginType = 'venda', prefillOrigin = null,
 }: {
   orgSlug: string
   initialContracts: ContractRow[]
@@ -97,9 +98,11 @@ export default function ContractsListView({
   hasAutentiqueKey: boolean
   webhookUrl: string
   recentEvents: any[]
+  defaultOriginType?: 'reserva' | 'venda'
+  prefillOrigin?: { type: string; id: string } | null
 }) {
   const router = useRouter()
-  const [newOpen, setNewOpen] = useState(false)
+  const [newOpen, setNewOpen] = useState(!!prefillOrigin)
 
   const inProgress = initialContracts.filter(c => c.status !== 'signed' && c.status !== 'cancelled')
   const signed = initialContracts.filter(c => c.status === 'signed')
@@ -148,6 +151,8 @@ export default function ContractsListView({
         templates={pickerTemplates}
         open={newOpen}
         onOpenChange={setNewOpen}
+        defaultOriginType={defaultOriginType}
+        prefillOrigin={prefillOrigin}
         onCreated={id => router.push(`/app/${orgSlug}/contratos/${id}`)}
       />
     </div>

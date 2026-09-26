@@ -17,7 +17,7 @@ import { revalidatePath } from 'next/cache'
 
 export type RelatedEntityType = 'reserva' | 'venda' | 'oportunidade' | 'cliente' | 'projeto'
 
-async function requireContractsAccess(orgSlug: string) {
+export async function requireContractsAccess(orgSlug: string) {
   const user = await requireAuth()
   const org = await getCurrentOrganization(orgSlug)
   const perm = await checkMemberPermission(org.id, user.id, 'contracts')
@@ -222,70 +222,6 @@ export async function removeContractSigner(orgSlug: string, signerId: string) {
 }
 
 // ── Gestão: vínculo obrigatório com Venda/Cliente ──────────────────────────
-
-export type SaleContractOption = {
-  id: string
-  label: string
-  contatoId: string | null
-  contatoName: string | null
-  amountCents: number | null
-}
-
-/** Busca vendas pra vincular a um contrato novo — todo contrato do módulo
- *  global precisa nascer ligado a uma venda (e, por tabela, ao cliente
- *  dela), além da própria organização como parte contratada. */
-export async function listSalesForContractPicker(orgSlug: string, query = ''): Promise<SaleContractOption[]> {
-  const { org, perm } = await requireContractsAccess(orgSlug)
-  if (!perm.allowed) return []
-  const supabase = createClient()
-
-  let q = supabase
-    .from('sales')
-    .select('id, amount_cents, sale_date, contatos!inner(id, name), products(name)')
-    .eq('organization_id', org.id)
-    .order('sale_date', { ascending: false })
-    .limit(30)
-
-  if (query.trim()) q = q.ilike('contatos.name', `%${query.trim()}%`)
-
-  const { data } = await q
-  return ((data || []) as any[])
-    .filter(row => row.contatos)
-    .map(row => ({
-      id: row.id,
-      label: `${row.contatos.name}${row.products?.name ? ` — ${row.products.name}` : ''}`,
-      contatoId: row.contatos.id,
-      contatoName: row.contatos.name,
-      amountCents: row.amount_cents,
-    }))
-}
-
-/** Contexto de origem de um contrato (usado na tela de detalhe pra exibir
- *  a venda/cliente vinculados) — só resolve quando related_entity_type
- *  é 'venda', igual ao que a Gestão sempre cria hoje. */
-export async function getContractSaleContext(orgSlug: string, saleId: string) {
-  const { org, perm } = await requireContractsAccess(orgSlug)
-  if (!perm.allowed) return null
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('sales')
-    .select('id, amount_cents, sale_date, contatos(id, name, email, phone), products(name)')
-    .eq('id', saleId)
-    .eq('organization_id', org.id)
-    .maybeSingle()
-  if (!data || !(data as any).contatos) return null
-  const row = data as any
-  return {
-    saleId: row.id,
-    amountCents: row.amount_cents,
-    saleDate: row.sale_date,
-    productName: row.products?.name || null,
-    contatoId: row.contatos.id,
-    contatoName: row.contatos.name,
-    contatoEmail: row.contatos.email,
-    contatoPhone: row.contatos.phone,
-  }
-}
 
 // ── Integração — atividade recente pro painel de status ────────────────────
 

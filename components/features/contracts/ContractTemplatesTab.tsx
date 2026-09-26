@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
-import { Plus, FileText, Pencil, Trash2, Info } from 'lucide-react'
+import { Plus, FileText, Pencil, Trash2 } from 'lucide-react'
 import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
+import ContractVariablesPanel from './ContractVariablesPanel'
 import {
   createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate,
   type DocumentTemplateRow,
@@ -153,10 +154,7 @@ function TemplateEditorDialog({
         </DialogHeader>
         <div className="space-y-3 overflow-y-auto flex-1 min-h-0">
           <Input value={name} onChange={e => setName(e.target.value)} className="font-medium" />
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-2.5 text-xs text-muted-foreground flex items-start gap-2">
-            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
-            Use <code className="px-1 rounded bg-muted">{'{{sale.cliente}}'}</code>, <code className="px-1 rounded bg-muted">{'{{sale.valor_total}}'}</code>, <code className="px-1 rounded bg-muted">{'{{org.nome}}'}</code> etc. — resolvidos automaticamente a partir da venda vinculada.
-          </div>
+          <ContractVariablesPanel />
           <TiptapEmailEditor orgSlug={orgSlug} value={bodyHtml} onChange={setBodyHtml} placeholder="Escreva o modelo do contrato…" />
         </div>
         <DialogFooter>
