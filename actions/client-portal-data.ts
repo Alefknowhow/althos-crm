@@ -149,7 +149,7 @@ export async function listPortalCampaignChildren(
   if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
 
   const { fetchMetaAdSets, fetchMetaInsights } = await import('@/lib/meta/ads')
-  const { summarizeInsights, classifyMetaError } = await import('@/actions/marketing-drilldown')
+  const { summarizeInsights, classifyMetaError } = await import('@/lib/marketing/drilldown-helpers')
   const until = new Date().toISOString().slice(0, 10)
   const since = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10)
 
