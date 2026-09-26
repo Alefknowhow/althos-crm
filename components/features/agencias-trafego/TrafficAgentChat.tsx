@@ -9,10 +9,10 @@
  */
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Wrench } from 'lucide-react'
+import { Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AIComposer } from '@/components/features/ai/AIComposer'
+import { AIEmptyState } from '@/components/features/ai/AIEmptyState'
 
 type ToolCall = { name: string; input: unknown; result?: unknown }
 type Message = { id: string; role: 'user' | 'assistant'; content: string; toolCalls: ToolCall[] }
@@ -80,9 +80,10 @@ export default function TrafficAgentChat({ orgSlug, clientId }: { orgSlug: strin
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto space-y-3 pb-2">
         {messages.length === 0 && (
-          <p className="text-xs text-muted-foreground py-4 text-center">
-            Pergunte sobre a operação deste cliente — ex.: &quot;por que o CPL subiu essa semana?&quot;
-          </p>
+          <AIEmptyState
+            title="Converse com o Traffic Agent"
+            description='Pergunte sobre a operação deste cliente — ex.: "por que o CPL subiu essa semana?"'
+          />
         )}
         {messages.map(m => (
           <div key={m.id} className={cn('rounded-lg px-3 py-2 text-sm max-w-[90%]', m.role === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 'bg-muted/50')}>
@@ -100,22 +101,17 @@ export default function TrafficAgentChat({ orgSlug, clientId }: { orgSlug: strin
         ))}
       </div>
 
-      <form
-        onSubmit={e => { e.preventDefault(); send(input) }}
-        className="flex items-end gap-2 border-t pt-2"
-      >
-        <Textarea
+      <div className="border-t pt-2">
+        <AIComposer
+          orgSlug={orgSlug}
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-          placeholder="Pergunte ao Traffic Agent..."
-          className="text-sm min-h-[40px] max-h-[100px]"
+          onChange={setInput}
+          onSend={() => send(input)}
           disabled={streaming}
+          sending={streaming}
+          placeholder="Pergunte ao Traffic Agent..."
         />
-        <Button type="submit" size="icon" disabled={streaming || !input.trim()}>
-          {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-        </Button>
-      </form>
+      </div>
     </div>
   )
 }
