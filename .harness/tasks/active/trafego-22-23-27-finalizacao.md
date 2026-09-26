@@ -278,4 +278,13 @@ _(preencher ao concluir cada passo: data, commit, observações)_
 | 2.8 | concluído | `49ca440` | Portal nega acesso se org saiu do nicho Tráfego |
 | 2.9 | bloqueado | — | Google Ads offline conversions — sem credenciais (developer token/OAuth). Interface fica pra Fase 3.1 |
 | 2.10 | concluído | `6521107` | Fechamento — `next build` completo (achado e corrigido bug real: helpers síncronos exportados de `'use server'` quebravam o webpack, não o tsc) |
-| 3.1–3.8 | pendente | | |
+| 3.1 | concluído | `0a1d109` | Ads Tool Layer (contratos + adapter Meta leitura + stub Google) |
+| 3.2 | concluído | `efbcfc1` | 6 tools de leitura/análise registradas (ads insights, adsets, ads, alertas, search terms, plano de mídia) |
+| 3.3 | concluído | `1cd9c70` | Chat do Traffic Agent no dock do cliente + Skills iniciais (library_items source_module='trafego'). Simplificação: persona/tools hardcoded na rota em vez de Agent Definition administrável |
+| 3.4 | concluído | `0c71c60` | Guardrails `ads_policies` — renderer de diff adiado até a 3.4 até existir tool de mutação; entregue junto da 3.8 |
+| 3.5 | concluído | `c2f2153` | Vínculo manual campanha↔plano + reconciliador diário (só nível campanha nesta versão) |
+| 3.6 | concluído | `a93358f` | Cron diário de health check + histórico (`traffic_account_checks`); tela "contas que exigem atenção" já existia (filtro do Command Center) |
+| 3.7 | concluído | `31572f4` | Auditoria de entitlement — nada a corrigir, só documentado |
+| 3.8 | concluído | `a76d12e` | Mutations Meta (pausar/retomar/orçamento) atrás de `META_ADS_WRITE_ENABLED`, com aprovação + policy + verificação. Renderer de diff no AgentApprovalsView entregue aqui (3.4+3.8 juntas) |
+| 3.9 | bloqueado | — | Google Ads — só o stub da 3.1, sem OAuth/developer token |
+| 3.10 | concluído | — | `next build` completo (✓ Compiled successfully) + `npm test` (228/228). Fase 3 e #22 fechados — ver comentário na issue |
