@@ -67,18 +67,7 @@ function AutomationFlowCanvasInner({ auto, setAuto, forms, stages, whatsappTempl
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
-  const [panelAnchor, setPanelAnchor] = useState<{ x: number; y: number; containerWidth: number; containerHeight: number } | null>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
-
-  /** Posição do clique relativa ao container do canvas — os painéis de
-   *  configuração (nó/conexão) abrem do lado do mouse em vez de sempre
-   *  cravados num canto fixo (pedido explícito, campos de texto largos
-   *  demais cortavam no painel estreito de antes). */
-  function anchorFromEvent(event: React.MouseEvent): typeof panelAnchor {
-    const rect = canvasContainerRef.current?.getBoundingClientRect()
-    if (!rect) return null
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top, containerWidth: rect.width, containerHeight: rect.height }
-  }
 
   const stepsById = useMemo(() => new Map(steps.map(s => [s.id, s])), [steps])
 
@@ -221,9 +210,10 @@ function addStep(type: string, afterNodeId?: string) {
   // estável) pra fechar sempre sobre o addStep/addableStepTypes atuais —
   // o botão "+" do nó nunca usa uma closure obsoleta de nodes/edges.
   const nodeTypes = useMemo(() => ({
-    automation: (nodeProps: { data: any; id: string }) => (
+    automation: (nodeProps: { data: any; id: string; selected?: boolean }) => (
       <AutomationFlowCanvasNode
         data={nodeProps.data}
+        selected={nodeProps.selected}
         onAddNext={nodeProps.data.kind === 'end' ? undefined : (type: string) => addStep(type, nodeProps.id)}
         addableStepTypes={addableStepTypes}
       />
@@ -261,25 +251,7 @@ function addStep(type: string, afterNodeId?: string) {
         </DropdownMenu>
       </div>
 
-      <div className="relative flex-1 min-h-0" ref={canvasContainerRef}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={EDGE_TYPES}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onEdgeClick={(event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setPanelAnchor(anchorFromEvent(event)) }}
-          onNodeClick={(event, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setPanelAnchor(anchorFromEvent(event)) }}
-          onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null) }}
-          fitView
-        >
-          <Background />
-          <Controls />
-          <MiniMap pannable zoomable className="!bg-card" />
-        </ReactFlow>
-
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {selectedEdge && (
           <AutomationFlowEdgePanel
             condition={selectedEdgeCondition}
@@ -289,7 +261,6 @@ function addStep(type: string, afterNodeId?: string) {
             onChange={updateSelectedEdgeCondition}
             onRemoveEdge={removeSelectedEdge}
             onClose={() => setSelectedEdgeId(null)}
-            anchor={panelAnchor ?? undefined}
           />
         )}
 
@@ -306,7 +277,6 @@ function addStep(type: string, afterNodeId?: string) {
             flowEdges={[]}
             setStepEdges={setStepEdges}
             onClose={() => setSelectedNodeId(null)}
-            anchor={panelAnchor ?? undefined}
           />
         )}
 
@@ -328,9 +298,28 @@ function addStep(type: string, afterNodeId?: string) {
             setStepEdges={setStepEdges}
             onDeleteStep={() => removeStep(selectedStep.id)}
             onClose={() => setSelectedNodeId(null)}
-            anchor={panelAnchor ?? undefined}
           />
         )}
+
+        <div className="relative flex-1 min-h-0 min-w-0" ref={canvasContainerRef}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={EDGE_TYPES}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onEdgeClick={(event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null) }}
+            onNodeClick={(event, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null) }}
+            onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null) }}
+            fitView
+          >
+            <Background />
+            <Controls />
+            <MiniMap pannable zoomable className="!bg-card" />
+          </ReactFlow>
+        </div>
       </div>
     </div>
   )

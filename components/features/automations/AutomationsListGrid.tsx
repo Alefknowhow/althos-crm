@@ -4,9 +4,10 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Search, Zap, Copy, Trash2, Activity } from 'lucide-react'
+import { Search, Zap, Copy, Trash2 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -43,12 +44,80 @@ const CHANNEL_LABEL: Record<Exclude<Channel, 'all'>, string> = {
   whatsapp: 'WhatsApp', instagram: 'Instagram', other: 'Pipeline',
 }
 
+/** Uma linha da tabela de automações — mesmo conteúdo do card antigo
+ *  (ícone/nome/canal/gatilho/passos/execuções/status/ações), só reorganizado
+ *  em colunas compactas em vez de um card grande em grade. */
+function AutomationListRow({
+  auto, orgSlug, busy, onToggle, onDuplicate, onDelete, selected, onSelectChange,
+}: {
+  auto: AutomationListItem
+  orgSlug: string
+  busy: boolean
+  onToggle: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+  selected: boolean
+  onSelectChange: (checked: boolean) => void
+}) {
+  const meta = triggerMeta(auto.trigger_type)
+  const Icon = meta.icon
+  const ch = channelOf(auto)
+
+  return (
+    <tr className={cnRow(auto.is_active)}>
+      <td className="w-10 px-3 py-2.5">
+        <Checkbox checked={selected} onCheckedChange={v => onSelectChange(!!v)} aria-label={`Selecionar ${auto.name}`} />
+      </td>
+      <td className="px-3 py-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-8 h-8 rounded-lg shrink-0 grid place-items-center" style={{ backgroundColor: `${meta.color}20`, color: meta.color }}>
+            <Icon className="w-4 h-4" />
+          </span>
+          <Link href={`/app/${orgSlug}/automacoes/${auto.id}`} className="text-sm font-medium hover:underline truncate">
+            {auto.name}
+          </Link>
+        </div>
+      </td>
+      <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{CHANNEL_LABEL[ch]}</td>
+      <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[220px]">
+        <span className="inline-flex items-center gap-1.5 truncate">
+          <Zap className="w-3 h-3 shrink-0" style={{ color: meta.color }} fill={meta.color} strokeWidth={0} />
+          <span className="truncate">{meta.label}</span>
+        </span>
+      </td>
+      <td className="px-3 py-2.5 text-sm tabular-nums text-center">{auto.steps.length}</td>
+      <td className="px-3 py-2.5 text-sm tabular-nums text-center">{auto.runsThisMonth}</td>
+      <td className="px-3 py-2.5">
+        <Switch checked={auto.is_active} onCheckedChange={onToggle} disabled={busy} />
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center justify-end gap-1.5">
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+            <Link href={`/app/${orgSlug}/automacoes/${auto.id}`}>Abrir canvas</Link>
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Duplicar" disabled={busy} onClick={onDuplicate}>
+            <Copy className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" title="Excluir" disabled={busy} onClick={onDelete}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function cnRow(active: boolean) {
+  return `border-b last:border-b-0 hover:bg-muted/30 transition-colors ${active ? '' : 'text-muted-foreground/80 bg-muted/10'}`
+}
+
 export default function AutomationsListGrid({ orgSlug, automations }: { orgSlug: string; automations: AutomationListItem[] }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [channel, setChannel] = useState<Channel>('all')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -58,6 +127,24 @@ export default function AutomationsListGrid({ orgSlug, automations }: { orgSlug:
       return true
     })
   }, [automations, query, channel])
+
+  const allVisibleSelected = visible.length > 0 && visible.every(a => selectedIds.has(a.id))
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      for (const a of visible) checked ? next.add(a.id) : next.delete(a.id)
+      return next
+    })
+  }
+
+  function toggleSelectOne(id: string, checked: boolean) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      checked ? next.add(id) : next.delete(id)
+      return next
+    })
+  }
 
   async function handleToggle(auto: AutomationListItem) {
     setBusyId(auto.id)
@@ -114,63 +201,42 @@ export default function AutomationsListGrid({ orgSlug, automations }: { orgSlug:
       </div>
 
       {visible.length === 0 ? (
-        <div className="rounded-lg bg-card p-12 text-center text-muted-foreground">
+        <div className="rounded-lg border bg-card p-12 text-center text-muted-foreground">
           {automations.length === 0 ? 'Nenhuma automação ainda. Crie a primeira com o botão "Nova Automação".' : 'Nenhuma automação encontrada com esses filtros.'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {visible.map(auto => {
-            const meta = triggerMeta(auto.trigger_type)
-            const Icon = meta.icon
-            const ch = channelOf(auto)
-            return (
-              <div key={auto.id} className="rounded-xl border bg-card p-4 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-9 h-9 rounded-lg shrink-0 grid place-items-center" style={{ backgroundColor: `${meta.color}20`, color: meta.color }}>
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <Link href={`/app/${orgSlug}/automacoes/${auto.id}`} className="text-sm font-semibold hover:underline truncate block">
-                        {auto.name}
-                      </Link>
-                      <p className="text-xs text-muted-foreground truncate">{CHANNEL_LABEL[ch]}</p>
-                    </div>
-                  </div>
-                  <Switch checked={auto.is_active} onCheckedChange={() => handleToggle(auto)} disabled={busyId === auto.id} className="shrink-0" />
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground rounded-lg bg-muted/40 px-2.5 py-1.5">
-                  <Zap className="w-3.5 h-3.5 shrink-0" style={{ color: meta.color }} fill={meta.color} strokeWidth={0} />
-                  <span className="truncate">Gatilho: {meta.label}</span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div>
-                    <span className="text-sm font-bold tabular-nums">{auto.steps.length}</span>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-1">passo{auto.steps.length !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Activity className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm font-bold tabular-nums">{auto.runsThisMonth}</span>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">execuções (30d)</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 mt-auto">
-                  <Button asChild size="sm" className="flex-1 h-8 text-xs">
-                    <Link href={`/app/${orgSlug}/automacoes/${auto.id}`}>Abrir canvas</Link>
-                  </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Duplicar" disabled={busyId === auto.id} onClick={() => handleDuplicate(auto.id)}>
-                    <Copy className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" title="Excluir" disabled={busyId === auto.id} onClick={() => setDeleteId(auto.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="rounded-lg border bg-card overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[860px]">
+            <thead>
+              <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="w-10 px-3 py-2 font-medium">
+                  <Checkbox checked={allVisibleSelected} onCheckedChange={v => toggleSelectAll(!!v)} aria-label="Selecionar todas" />
+                </th>
+                <th className="px-3 py-2 font-medium">Automação</th>
+                <th className="px-3 py-2 font-medium">Canal</th>
+                <th className="px-3 py-2 font-medium">Gatilho</th>
+                <th className="px-3 py-2 font-medium text-center">Passos</th>
+                <th className="px-3 py-2 font-medium text-center">Execuções (30D)</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(auto => (
+                <AutomationListRow
+                  key={auto.id}
+                  auto={auto}
+                  orgSlug={orgSlug}
+                  busy={busyId === auto.id}
+                  onToggle={() => handleToggle(auto)}
+                  onDuplicate={() => handleDuplicate(auto.id)}
+                  onDelete={() => setDeleteId(auto.id)}
+                  selected={selectedIds.has(auto.id)}
+                  onSelectChange={checked => toggleSelectOne(auto.id, checked)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

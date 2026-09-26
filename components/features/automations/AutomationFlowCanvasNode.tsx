@@ -38,7 +38,7 @@ type NodeExtraProps = {
  * (qual botão foi clicado), sem precisar abrir painel nenhum. Mesmo
  * princípio do node de funil de Instagram (SocialFunnelNode.tsx).
  */
-export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepTypes }: { data: AutomationCanvasNodeData } & NodeExtraProps) {
+export default function AutomationFlowCanvasNode({ data, selected, onAddNext, addableStepTypes }: { data: AutomationCanvasNodeData; selected?: boolean } & NodeExtraProps) {
   const isEnd = data.kind === 'end'
   const isInstagramDm = data.kind === 'step' && data.typeId === 'send_instagram_dm'
   const buttons = isInstagramDm ? (data.buttons || []) : []
@@ -52,9 +52,10 @@ export default function AutomationFlowCanvasNode({ data, onAddNext, addableStepT
   return (
     <div
       className={cn(
-        'relative rounded-md border bg-card shadow-sm px-3 py-2 min-w-[190px] max-w-[260px]',
+        'relative rounded-md border bg-card shadow-sm px-3 py-2 min-w-[190px] max-w-[260px] transition-shadow',
         isEnd && 'border-dashed bg-muted/40',
         data.hasErrors && 'border-destructive',
+        selected && 'border-primary ring-2 ring-primary/40',
       )}
     >
       {data.kind !== 'trigger' && <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />}
