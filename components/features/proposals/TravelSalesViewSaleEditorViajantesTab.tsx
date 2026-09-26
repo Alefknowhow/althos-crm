@@ -20,7 +20,7 @@ export default function TravelSalesViewSaleEditorViajantesTab({
     <TabsContent value="viajantes" className="pt-4">
       <ModuleSection title="Viajantes" contentClassName="space-y-2">
         {travelers.length > 0 && (
-          <div className="hidden sm:grid grid-cols-[1fr_8rem_9rem_9rem_8rem_2rem] gap-2 px-3">
+          <div className="hidden sm:grid grid-cols-[1fr_10.5rem_9rem_9rem_10.5rem_2rem] gap-2 px-3">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nome completo</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nascimento</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CPF</span>
@@ -30,7 +30,7 @@ export default function TravelSalesViewSaleEditorViajantesTab({
           </div>
         )}
         {travelers.map((t, i) => (
-          <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_9rem_9rem_8rem_2rem] gap-2 items-center rounded-xl bg-muted/50 p-3">
+          <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_10.5rem_9rem_9rem_10.5rem_2rem] gap-2 items-center rounded-xl bg-muted/50 p-3">
             <div className="relative">
               <TravelerNameAutocomplete
                 leads={leads}

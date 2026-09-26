@@ -239,7 +239,14 @@ export default function SaleEditor({
           <ModuleTabsList className="flex-wrap h-auto">
             <ModuleTabsTrigger value="dados">Dados da reserva</ModuleTabsTrigger>
             <ModuleTabsTrigger value="produtos">Produtos</ModuleTabsTrigger>
-            <ModuleTabsTrigger value="viajantes">Viajantes{travelers.length > 0 ? ` ${travelers.length}` : ''}</ModuleTabsTrigger>
+            <ModuleTabsTrigger value="viajantes" className="gap-1.5">
+              Viajantes
+              {travelers.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-[10px] font-semibold leading-none text-destructive-foreground">
+                  {travelers.length}
+                </span>
+              )}
+            </ModuleTabsTrigger>
             <ModuleTabsTrigger value="vouchers">Vouchers</ModuleTabsTrigger>
             <ModuleTabsTrigger value="tarefas">Tarefas</ModuleTabsTrigger>
           </ModuleTabsList>

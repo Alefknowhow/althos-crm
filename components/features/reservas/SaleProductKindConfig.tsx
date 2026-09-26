@@ -28,7 +28,23 @@ export const KIND_OPTIONS: { value: SaleProductKind; label: string; icon: typeof
   { value: 'outro', label: 'Outro', icon: Package },
 ]
 
-export type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea'; required?: boolean }
+// Largura do campo condizente com o dado (issue #59/#60, ajuste visual
+// pedido pelo usuário) — antes todo campo ocupava metade da largura do
+// formulário (grid-cols-2), o que deixava "Nº da cabine" do mesmo tamanho
+// de "Nome do hotel". xs=poucos caracteres (nº cabine, deck), sm=código
+// curto (localizador, plano de alimentação), md=nome próprio (cidade,
+// navio, titular), lg=texto mais longo (nome/atração sem ser observação).
+export type FieldWidth = 'xs' | 'sm' | 'md' | 'lg' | 'full'
+export type FieldDef = { key: string; label: string; type?: 'text' | 'date' | 'time' | 'number' | 'textarea'; required?: boolean; width?: FieldWidth }
+
+const WIDTH_CLASS: Record<FieldWidth, string> = {
+  xs: 'w-24',
+  sm: 'w-36',
+  md: 'w-48',
+  lg: 'w-64',
+  full: 'w-full basis-full',
+}
+const DATE_WIDTH_CLASS = 'w-44'
 
 export const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
   aereo: [
@@ -68,71 +84,71 @@ export const KIND_FIELDS: Record<SaleProductKind, FieldDef[]> = {
     { key: 'condicoes', label: 'Condições da reserva', type: 'textarea' },
   ],
   transfer: [
-    { key: 'titular', label: 'Titular' },
-    { key: 'codigo_reserva', label: 'Código da reserva' },
+    { key: 'titular', label: 'Titular', width: 'md' },
+    { key: 'codigo_reserva', label: 'Código da reserva', width: 'sm' },
     { key: 'data', label: 'Data', type: 'date' },
-    { key: 'horario', label: 'Horário' },
-    { key: 'origem', label: 'Local de partida' },
-    { key: 'destino', label: 'Destino' },
-    { key: 'tipo_servico', label: 'Tipo de serviço' },
-    { key: 'fornecedor', label: 'Empresa/motorista' },
-    { key: 'contato', label: 'Contato (telefone/e-mail)' },
+    { key: 'horario', label: 'Horário', width: 'xs' },
+    { key: 'origem', label: 'Local de partida', width: 'md' },
+    { key: 'destino', label: 'Destino', width: 'md' },
+    { key: 'tipo_servico', label: 'Tipo de serviço', width: 'md' },
+    { key: 'fornecedor', label: 'Empresa/motorista', width: 'md' },
+    { key: 'contato', label: 'Contato (telefone/e-mail)', width: 'md' },
     { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
   ],
   cruzeiro: [
-    { key: 'titular', label: 'Titular' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'companhia', label: 'Companhia marítima' },
-    { key: 'navio', label: 'Navio' },
-    { key: 'roteiro', label: 'Roteiro' },
-    { key: 'embarque_porto', label: 'Porto de embarque' },
+    { key: 'titular', label: 'Titular', width: 'md' },
+    { key: 'localizador', label: 'Localizador', width: 'sm' },
+    { key: 'companhia', label: 'Companhia marítima', width: 'sm' },
+    { key: 'navio', label: 'Navio', width: 'md' },
+    { key: 'roteiro', label: 'Roteiro', width: 'lg' },
+    { key: 'embarque_porto', label: 'Porto de embarque', width: 'md' },
     { key: 'embarque_data', label: 'Data de embarque', type: 'date' },
-    { key: 'desembarque_porto', label: 'Porto de desembarque' },
+    { key: 'desembarque_porto', label: 'Porto de desembarque', width: 'md' },
     { key: 'desembarque_data', label: 'Data de desembarque', type: 'date' },
-    { key: 'cabine', label: 'Nº da cabine' },
-    { key: 'categoria', label: 'Categoria da cabine' },
-    { key: 'deck', label: 'Deck' },
-    { key: 'localizacao', label: 'Localização (proa/meio/popa)' },
-    { key: 'vista', label: 'Vista' },
-    { key: 'regime', label: 'Plano de alimentação' },
+    { key: 'cabine', label: 'Nº da cabine', width: 'xs' },
+    { key: 'categoria', label: 'Categoria da cabine', width: 'sm' },
+    { key: 'deck', label: 'Deck', width: 'xs' },
+    { key: 'localizacao', label: 'Localização (proa/meio/popa)', width: 'sm' },
+    { key: 'vista', label: 'Vista', width: 'xs' },
+    { key: 'regime', label: 'Plano de alimentação', width: 'sm' },
     { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
   ],
   passeio: [
-    { key: 'nome', label: 'Nome' },
+    { key: 'nome', label: 'Nome', width: 'lg' },
     { key: 'data', label: 'Data', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
+    { key: 'fornecedor', label: 'Fornecedor', width: 'md' },
+    { key: 'localizador', label: 'Localizador', width: 'sm' },
+    { key: 'observacoes', label: 'Observações', width: 'lg' },
   ],
   seguro: [
-    { key: 'nome', label: 'Seguradora / plano' },
+    { key: 'nome', label: 'Seguradora / plano', width: 'lg' },
     { key: 'data', label: 'Vigência a partir de', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Apólice' },
-    { key: 'observacoes', label: 'Observações' },
+    { key: 'fornecedor', label: 'Fornecedor', width: 'md' },
+    { key: 'localizador', label: 'Apólice', width: 'sm' },
+    { key: 'observacoes', label: 'Observações', width: 'lg' },
   ],
   ingresso: [
-    { key: 'atracao', label: 'Atração' },
-    { key: 'titular', label: 'Titular' },
+    { key: 'atracao', label: 'Atração', width: 'lg' },
+    { key: 'titular', label: 'Titular', width: 'md' },
     { key: 'data', label: 'Data', type: 'date' },
-    { key: 'codigo_reserva', label: 'Código da reserva' },
-    { key: 'fornecedor', label: 'Prestador de serviço' },
-    { key: 'contato', label: 'Contato (telefone/e-mail)' },
+    { key: 'codigo_reserva', label: 'Código da reserva', width: 'sm' },
+    { key: 'fornecedor', label: 'Prestador de serviço', width: 'md' },
+    { key: 'contato', label: 'Contato (telefone/e-mail)', width: 'md' },
     { key: 'observacoes', label: 'Detalhes', type: 'textarea' },
   ],
   veiculo: [
-    { key: 'nome', label: 'Veículo' },
+    { key: 'nome', label: 'Veículo', width: 'md' },
     { key: 'data', label: 'Retirada', type: 'date' },
-    { key: 'fornecedor', label: 'Locadora' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
+    { key: 'fornecedor', label: 'Locadora', width: 'md' },
+    { key: 'localizador', label: 'Localizador', width: 'sm' },
+    { key: 'observacoes', label: 'Observações', width: 'lg' },
   ],
   outro: [
-    { key: 'nome', label: 'Nome' },
+    { key: 'nome', label: 'Nome', width: 'md' },
     { key: 'data', label: 'Data', type: 'date' },
-    { key: 'fornecedor', label: 'Fornecedor' },
-    { key: 'localizador', label: 'Localizador' },
-    { key: 'observacoes', label: 'Observações' },
+    { key: 'fornecedor', label: 'Fornecedor', width: 'md' },
+    { key: 'localizador', label: 'Localizador', width: 'sm' },
+    { key: 'observacoes', label: 'Observações', width: 'lg' },
   ],
 }
 
@@ -162,9 +178,12 @@ export function GenericProductFields({
   fields, data, setData,
 }: { fields: FieldDef[]; data: Record<string, string>; setData: (updater: (prev: Record<string, string>) => Record<string, string>) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className="flex flex-wrap gap-2.5">
       {fields.map(f => (
-        <div key={f.key} className={cn('space-y-1.5', f.type === 'textarea' && 'col-span-2')}>
+        <div key={f.key} className={cn(
+          'space-y-1.5',
+          f.type === 'textarea' ? 'w-full basis-full' : f.type === 'date' ? DATE_WIDTH_CLASS : WIDTH_CLASS[f.width || 'md'],
+        )}>
           <Label className="text-xs">{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
           {f.type === 'textarea' ? (
             <Textarea
