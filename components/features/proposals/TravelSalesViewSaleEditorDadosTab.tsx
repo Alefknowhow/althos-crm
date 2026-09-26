@@ -31,7 +31,7 @@ export default function TravelSalesViewSaleEditorDadosTab({
 }) {
   return (
     <TabsContent value="dados" className="pt-4">
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-6xl mx-auto">
       <div className="space-y-4 max-w-3xl flex-1 min-w-0">
         <div className="grid grid-cols-3 gap-2.5 items-end">
           <VoucherUploadWithOcr orgSlug={orgSlug} label="Add voucher" onExtracted={onExtracted} />
@@ -50,9 +50,9 @@ export default function TravelSalesViewSaleEditorDadosTab({
           <Field label="Destino"><Input value={s.destination || ''} onChange={e => set('destination', e.target.value)} /></Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field>
-          <Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field>
+        <div className="flex flex-wrap gap-2.5">
+          <div className="w-40"><Field label="Data de ida"><Input type="date" value={s.departure_date || ''} onChange={e => set('departure_date', e.target.value)} /></Field></div>
+          <div className="w-40"><Field label="Data de volta"><Input type="date" value={s.return_date || ''} onChange={e => set('return_date', e.target.value)} /></Field></div>
         </div>
 
         {/* Itens inclusos — checkbox (não pill colorida): quadrado com check

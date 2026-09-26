@@ -1,5 +1,4 @@
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { getContatoTravelerInfo, type TravelSaleRow } from '@/actions/travel-sales'
@@ -20,10 +19,19 @@ export default function TravelSalesViewSaleEditorViajantesTab({
   return (
     <TabsContent value="viajantes" className="pt-4">
       <ModuleSection title="Viajantes" contentClassName="space-y-2">
+        {travelers.length > 0 && (
+          <div className="hidden sm:grid grid-cols-[1fr_8rem_9rem_9rem_8rem_2rem] gap-2 px-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nome completo</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nascimento</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">CPF</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nº Passaporte</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Venc. passaporte</span>
+            <span />
+          </div>
+        )}
         {travelers.map((t, i) => (
-          <div key={i} className="flex flex-wrap items-end gap-2 rounded-xl bg-muted/50 p-3">
-            <div className="flex-1 min-w-[220px] space-y-1 relative">
-              <Label className="text-xs text-muted-foreground">Nome completo</Label>
+          <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_8rem_9rem_9rem_8rem_2rem] gap-2 items-center rounded-xl bg-muted/50 p-3">
+            <div className="relative">
               <TravelerNameAutocomplete
                 leads={leads}
                 value={t.name || ''}
@@ -35,28 +43,16 @@ export default function TravelSalesViewSaleEditorViajantesTab({
                 }}
               />
             </div>
-            <div className="w-32 space-y-1">
-              <Label className="text-xs text-muted-foreground">Nascimento</Label>
-              <Input type="date" value={t.birth_date || ''}
-                onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
-            </div>
-            <div className="w-36 space-y-1">
-              <Label className="text-xs text-muted-foreground">CPF</Label>
-              <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
-                onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
-            </div>
-            <div className="w-36 space-y-1">
-              <Label className="text-xs text-muted-foreground">Nº Passaporte</Label>
-              <Input value={t.passport_number || ''}
-                onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_number: e.target.value }; set('travelers', n) }} />
-            </div>
-            <div className="w-32 space-y-1">
-              <Label className="text-xs text-muted-foreground">Vencimento passaporte</Label>
-              <Input type="date" value={t.passport_expiry || ''}
-                onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_expiry: e.target.value }; set('travelers', n) }} />
-            </div>
+            <Input type="date" value={t.birth_date || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], birth_date: e.target.value }; set('travelers', n) }} />
+            <Input placeholder="000.000.000-00" inputMode="numeric" value={t.cpf || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], cpf: e.target.value }; set('travelers', n) }} />
+            <Input value={t.passport_number || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_number: e.target.value }; set('travelers', n) }} />
+            <Input type="date" value={t.passport_expiry || ''}
+              onChange={e => { const n = [...travelers]; n[i] = { ...n[i], passport_expiry: e.target.value }; set('travelers', n) }} />
             <button type="button" onClick={() => set('travelers', travelers.filter((_, j) => j !== i))}
-              className="shrink-0 text-muted-foreground hover:text-destructive p-1.5" aria-label="Remover viajante">
+              className="shrink-0 justify-self-end sm:justify-self-center text-muted-foreground hover:text-destructive p-1.5" aria-label="Remover viajante">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
