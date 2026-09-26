@@ -8,6 +8,7 @@
 
 import dynamic from 'next/dynamic'
 import { Sparkles, User as UserIcon, Loader2 } from 'lucide-react'
+import { stripMarkdownTables } from '@/components/features/ai/markdownLite'
 
 // recharts uses browser APIs during module initialisation — loading it
 // server-side causes a hydration crash. Use dynamic with ssr:false so the
@@ -104,7 +105,10 @@ export function InsightsChatMessages({
           </div>
         </div>
       ) : (
-        messages.map(m => (
+        messages.map(m => {
+          const hasDataCard = m.role === 'assistant' && !!m.tool_calls?.some(tc => tc.result?.view?.type !== 'none')
+          const displayContent = hasDataCard ? stripMarkdownTables(m.content) : m.content
+          return (
           <div
             key={m.id}
             className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''} ${
@@ -141,7 +145,7 @@ export function InsightsChatMessages({
                 ))}
 
               {/* Text reply bubble */}
-              {m.content && (
+              {displayContent && (
                 <div
                   className={`rounded-none px-4 py-2.5 text-sm whitespace-pre-wrap ${
                     m.role === 'user'
@@ -151,7 +155,7 @@ export function InsightsChatMessages({
                         : 'bg-muted'
                   }`}
                 >
-                  {renderMarkdownLite(m.content)}
+                  {renderMarkdownLite(displayContent)}
                 </div>
               )}
 
@@ -170,7 +174,8 @@ export function InsightsChatMessages({
               )}
             </div>
           </div>
-        ))
+          )
+        })
       )}
 
       {sending && (

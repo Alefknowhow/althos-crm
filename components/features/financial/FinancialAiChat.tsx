@@ -9,7 +9,7 @@ import { Coins, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
 import { getFinancialAiInit, confirmFinancialAiEntry } from '@/actions/financial-ai'
 import { AIComposer } from '@/components/features/ai/AIComposer'
 import { AIEmptyState } from '@/components/features/ai/AIEmptyState'
-import { renderMarkdownLite } from '@/components/features/ai/markdownLite'
+import { renderMarkdownLite, stripMarkdownTables } from '@/components/features/ai/markdownLite'
 
 type FinancialAiView =
   | { type: 'kpis'; items: Array<{ label: string; value: string }> }
@@ -243,7 +243,10 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
                 <Badge variant="outline" className="text-[10px]">A IA nunca grava dados sem sua confirmação</Badge>
               </div>
             ) : (
-              messages.map(m => (
+              messages.map(m => {
+                const hasDataCard = !!m.tool_calls?.some(tc => tc.result?.view && tc.result.view.type !== 'none')
+                const displayContent = hasDataCard ? stripMarkdownTables(m.content) : m.content
+                return (
                 <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div
                     className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${
@@ -258,18 +261,19 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
                         <ViewCard key={i} view={tc.result.view} orgSlug={orgSlug} />
                       ) : null
                     ))}
-                    {m.content && (
+                    {displayContent && (
                       <div
                         className={`rounded-none px-3.5 py-2 text-sm whitespace-pre-wrap ${
                           m.role === 'user' ? 'bg-primary text-primary-foreground inline-block' : 'bg-muted'
                         }`}
                       >
-                        {renderMarkdownLite(m.content)}
+                        {renderMarkdownLite(displayContent)}
                       </div>
                     )}
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
             {streaming && messages[messages.length - 1]?.content === '' && (
               <div className="flex gap-2.5">
