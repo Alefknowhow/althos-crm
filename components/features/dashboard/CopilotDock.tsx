@@ -13,7 +13,7 @@ import {
 } from '@/actions/ai_insights'
 import { useCopilot } from '@/components/features/CopilotProvider'
 import { AIComposer } from '@/components/features/ai/AIComposer'
-import { CopilotDockSidebar } from './CopilotDockSidebar'
+import { AIChatSidebar } from '@/components/features/ai/AIChatSidebar'
 import { CopilotDockMessages } from './CopilotDockMessages'
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: any } }
@@ -213,7 +213,7 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
             {/* ── Sidebar: histórico de conversas — inline no desktop,
                 drawer sobreposto no mobile (a tela é estreita demais pra
                 dividir espaço com o chat). ── */}
-            <CopilotDockSidebar
+            <AIChatSidebar
               sidebarOpen={sidebarOpen}
               setSidebarOpen={setSidebarOpen}
               sessions={sessions}
