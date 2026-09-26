@@ -186,13 +186,53 @@ export async function requirePortalAccess(contatoId: string): Promise<PortalClie
   return found
 }
 
-export async function getPortalOverview(contatoId: string): Promise<ClientPerformanceSummary> {
+export type PortalOverviewPlatform = 'meta' | 'google' | 'all'
+
+/** Visão Geral do portal com período/plataforma selecionáveis (2.1) —
+ *  `days` é a janela solicitada, sempre comparada com o período
+ *  imediatamente anterior de mesma duração pra calcular variação %. */
+export async function getPortalOverview(
+  contatoId: string,
+  opts?: { days?: 7 | 30 | 90; platform?: PortalOverviewPlatform },
+): Promise<{ current: ClientPerformanceSummary; previous: ClientPerformanceSummary }> {
   const access = await requirePortalAccess(contatoId)
+  const days = opts?.days ?? 30
+  const platform = opts?.platform ?? 'all'
   const now = new Date()
-  const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
+  const range = { from: new Date(now.getTime() - (days - 1) * 86_400_000), to: now }
   const supabase = createClient()
-  const { current } = await getClientPerformanceComparisonAdmin(supabase, access.organizationId, contatoId, range30d)
-  return current
+  return getClientPerformanceComparisonAdmin(supabase, access.organizationId, contatoId, range, platform)
+}
+
+/** Série diária pra alimentar o gráfico da Visão Geral do portal — mesma
+ *  fonte/lógica de `getClientDailySeries` (painel interno), reaproveitada
+ *  via `...Core` porque o usuário do portal não tem orgSlug/sessão de membro. */
+export async function getPortalDailySeries(
+  contatoId: string,
+  opts?: { days?: 7 | 30 | 90; platform?: PortalOverviewPlatform },
+) {
+  const access = await requirePortalAccess(contatoId)
+  const days = opts?.days ?? 30
+  const platform = opts?.platform ?? 'all'
+  const now = new Date()
+  const range = { from: new Date(now.getTime() - (days - 1) * 86_400_000), to: now }
+  const supabase = createClient()
+  const { getClientDailySeriesCore } = await import('@/actions/trafego-performance')
+  return getClientDailySeriesCore(supabase, access.organizationId, contatoId, range, platform)
+}
+
+/** Quantos providers distintos o cliente tem em `ad_accounts` — usado pra
+ *  só mostrar o filtro de plataforma no portal quando fizer sentido
+ *  (cliente com só Meta não precisa escolher). */
+export async function getPortalAdPlatforms(contatoId: string): Promise<string[]> {
+  const access = await requirePortalAccess(contatoId)
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('ad_accounts')
+    .select('provider')
+    .eq('organization_id', access.organizationId)
+    .eq('contato_id', contatoId)
+  return Array.from(new Set((data || []).map(a => a.provider)))
 }
 
 // getClientPerformanceComparison exige orgSlug (resolve via sessão do
@@ -204,14 +244,15 @@ async function getClientPerformanceComparisonAdmin(
   orgId: string,
   contatoId: string,
   range: { from: Date; to: Date },
+  platform?: PortalOverviewPlatform,
 ) {
   const { getClientPerformanceSummaryCore } = await import('@/actions/trafego-performance')
   const now = range.to
   const days = Math.round((range.to.getTime() - range.from.getTime()) / 86_400_000) + 1
   const prevRange = { from: new Date(range.from.getTime() - days * 86_400_000), to: new Date(range.from.getTime() - 1) }
   const [current, previous] = await Promise.all([
-    getClientPerformanceSummaryCore(supabase, orgId, contatoId, range),
-    getClientPerformanceSummaryCore(supabase, orgId, contatoId, prevRange),
+    getClientPerformanceSummaryCore(supabase, orgId, contatoId, range, platform),
+    getClientPerformanceSummaryCore(supabase, orgId, contatoId, prevRange, platform),
   ])
   void now
   return { current, previous }

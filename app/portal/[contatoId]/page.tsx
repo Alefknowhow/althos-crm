@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { requirePortalAccess, getPortalOverview, listPortalReports } from '@/actions/client-portal'
+import { requirePortalAccess, getPortalOverview, getPortalDailySeries, getPortalAdPlatforms, listPortalReports } from '@/actions/client-portal'
 import { listPortalAdAccounts, listPortalCampaigns, listPortalConversions } from '@/actions/client-portal-data'
 import { listPortalLibraryAssetChains } from '@/actions/client-portal-library'
 import PortalDashboard from '@/components/features/portal/PortalDashboard'
@@ -19,8 +19,10 @@ export default async function PortalClientPage({ params }: { params: { contatoId
     redirect('/portal/login')
   }
 
-  const [overview, reports, libraryChains, adAccounts, campaigns, conversions] = await Promise.all([
+  const [overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions] = await Promise.all([
     getPortalOverview(params.contatoId),
+    getPortalDailySeries(params.contatoId),
+    getPortalAdPlatforms(params.contatoId),
     listPortalReports(params.contatoId),
     listPortalLibraryAssetChains(params.contatoId),
     listPortalAdAccounts(params.contatoId),
@@ -34,6 +36,8 @@ export default async function PortalClientPage({ params }: { params: { contatoId
       clientName={access.contatoName}
       orgName={access.organizationName}
       overview={overview}
+      dailySeries={dailySeries}
+      availablePlatforms={availablePlatforms}
       reports={reports}
       libraryChains={libraryChains}
       adAccounts={adAccounts}

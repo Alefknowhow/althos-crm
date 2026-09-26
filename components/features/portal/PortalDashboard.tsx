@@ -10,9 +10,10 @@ import { formatCurrency } from '@/lib/utils'
 import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
 import { type PortalAdAccount, type PortalCampaign, type PortalConversion } from '@/actions/client-portal-data'
 import type { PortalLibraryAssetChain } from '@/actions/client-portal-library'
-import type { ClientPerformanceSummary } from '@/actions/trafego-performance'
+import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import PortalConversionsCard from './PortalConversionsCard'
 import PortalLibraryTab from './PortalLibraryTab'
+import PortalOverviewTab from './PortalOverviewTab'
 
 const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }> = {
   active: { label: 'Ativa', className: 'bg-green-100 text-green-800 border-green-200' },
@@ -28,12 +29,14 @@ type Report = { id: string; filename: string | null; created_at: string; period_
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, reports, libraryChains, adAccounts, campaigns, conversions,
+  contatoId, clientName, orgName, overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions,
 }: {
   contatoId: string
   clientName: string
   orgName: string
-  overview: ClientPerformanceSummary
+  overview: { current: ClientPerformanceSummary; previous: ClientPerformanceSummary }
+  dailySeries: ClientDailyPoint[]
+  availablePlatforms: string[]
   reports: Report[]
   libraryChains: PortalLibraryAssetChain[]
   adAccounts: PortalAdAccount[]
@@ -72,18 +75,13 @@ export default function PortalDashboard({
             <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visao-geral" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Performance (30 dias)</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <Kpi label="Investimento" value={formatCurrency(overview.investmentCents)} />
-                <Kpi label="Leads" value={String(overview.leads)} />
-                <Kpi label="Conversões" value={String(overview.salesCount)} />
-                <Kpi label="Receita" value={formatCurrency(overview.revenueCents)} />
-                <Kpi label="CPL" value={overview.cplCents != null ? formatCurrency(overview.cplCents) : '—'} />
-                <Kpi label="ROAS" value={overview.roas != null ? `${overview.roas.toFixed(1)}x` : '—'} />
-              </CardContent>
-            </Card>
+          <TabsContent value="visao-geral" className="mt-4">
+            <PortalOverviewTab
+              contatoId={contatoId}
+              initial={overview}
+              initialSeries={dailySeries}
+              availablePlatforms={availablePlatforms}
+            />
           </TabsContent>
 
           <TabsContent value="contas" className="mt-4 space-y-4">
@@ -175,15 +173,6 @@ export default function PortalDashboard({
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  )
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background p-3 space-y-1">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</div>
-      <div className="text-lg font-bold tabular-nums">{value}</div>
     </div>
   )
 }

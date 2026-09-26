@@ -33,10 +33,14 @@ export async function getClientPerformanceSummaryCore(
   orgId: string,
   contatoId: string,
   range: { from: Date; to: Date },
+  platform?: 'meta' | 'google' | 'all',
 ): Promise<ClientPerformanceSummary> {
   const org = { id: orgId }
   const fromStr = range.from.toISOString().slice(0, 10)
   const toStr = range.to.toISOString().slice(0, 10)
+
+  let accountsQuery = supabase.from('ad_accounts').select('id').eq('organization_id', org.id).eq('contato_id', contatoId)
+  if (platform && platform !== 'all') accountsQuery = accountsQuery.eq('provider', platform)
 
   const [{ data: sales }, { data: accounts }] = await Promise.all([
     supabase
@@ -47,7 +51,7 @@ export async function getClientPerformanceSummaryCore(
       .eq('status', 'completed')
       .gte('sale_date', fromStr)
       .lte('sale_date', toStr),
-    supabase.from('ad_accounts').select('id').eq('organization_id', org.id).eq('contato_id', contatoId),
+    accountsQuery,
   ])
 
   const revenueCents = (sales || []).reduce((a, s) => a + (s.amount_cents || 0), 0)
@@ -145,17 +149,20 @@ export type ClientDailyPoint = {
   clicks: number
 }
 
-export async function getClientDailySeries(
-  orgSlug: string,
+export async function getClientDailySeriesCore(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
   contatoId: string,
   range: { from: Date; to: Date },
+  platform?: 'meta' | 'google' | 'all',
 ): Promise<ClientDailyPoint[]> {
-  const org = await requireAccess(orgSlug)
-  const supabase = createClient()
+  const org = { id: orgId }
   const fromStr = range.from.toISOString().slice(0, 10)
   const toStr = range.to.toISOString().slice(0, 10)
 
-  const { data: accounts } = await supabase.from('ad_accounts').select('id').eq('organization_id', org.id).eq('contato_id', contatoId)
+  let accountsQuery = supabase.from('ad_accounts').select('id').eq('organization_id', org.id).eq('contato_id', contatoId)
+  if (platform && platform !== 'all') accountsQuery = accountsQuery.eq('provider', platform)
+  const { data: accounts } = await accountsQuery
   const accountIds = (accounts || []).map(a => a.id)
 
   const byDate = new Map<string, ClientDailyPoint>()
@@ -201,4 +208,14 @@ export async function getClientDailySeries(
   }
 
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export async function getClientDailySeries(
+  orgSlug: string,
+  contatoId: string,
+  range: { from: Date; to: Date },
+): Promise<ClientDailyPoint[]> {
+  const org = await requireAccess(orgSlug)
+  const supabase = createClient()
+  return getClientDailySeriesCore(supabase, org.id, contatoId, range)
 }
