@@ -221,6 +221,24 @@ export async function getPortalDailySeries(
   return getClientDailySeriesCore(supabase, access.organizationId, contatoId, range, platform)
 }
 
+/** Conversões manuais tipo 'venda' já validadas pela agência no período —
+ *  alimenta o card Plataforma × Real (2.6), nunca soma pendentes. */
+export async function getPortalValidatedConversionsCount(contatoId: string, opts?: { days?: 7 | 30 | 90 }): Promise<number> {
+  const access = await requirePortalAccess(contatoId)
+  const days = opts?.days ?? 30
+  const since = new Date(Date.now() - (days - 1) * 86_400_000).toISOString().slice(0, 10)
+  const supabase = createClient()
+  const { count } = await supabase
+    .from('portal_conversions')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', access.organizationId)
+    .eq('contato_id', contatoId)
+    .eq('type', 'venda')
+    .not('validated_at', 'is', null)
+    .gte('occurred_at', since)
+  return count || 0
+}
+
 /** Quantos providers distintos o cliente tem em `ad_accounts` — usado pra
  *  só mostrar o filtro de plataforma no portal quando fizer sentido
  *  (cliente com só Meta não precisa escolher). */

@@ -12,9 +12,10 @@
 import { useEffect, useState, useTransition } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { getPortalOverview, getPortalDailySeries, type PortalOverviewPlatform } from '@/actions/client-portal'
+import { getPortalOverview, getPortalDailySeries, getPortalValidatedConversionsCount, type PortalOverviewPlatform } from '@/actions/client-portal'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import ClientPerformanceChart from '@/components/features/agencias-trafego/ClientPerformanceChart'
+import PlatformVsRealCard from '@/components/features/trafego/PlatformVsRealCard'
 
 const PERIOD_OPTIONS: { days: 7 | 30 | 90; label: string }[] = [
   { days: 7, label: '7 dias' },
@@ -27,16 +28,19 @@ export default function PortalOverviewTab({
   initial,
   initialSeries,
   availablePlatforms,
+  validatedConversions,
 }: {
   contatoId: string
   initial: { current: ClientPerformanceSummary; previous: ClientPerformanceSummary }
   initialSeries: ClientDailyPoint[]
   availablePlatforms: string[]
+  validatedConversions: number
 }) {
   const [days, setDays] = useState<7 | 30 | 90>(30)
   const [platform, setPlatform] = useState<PortalOverviewPlatform>('all')
   const [data, setData] = useState(initial)
   const [series, setSeries] = useState(initialSeries)
+  const [validated, setValidated] = useState(validatedConversions)
   const [isPending, startTransition] = useTransition()
 
   const showPlatformFilter = availablePlatforms.length > 1
@@ -44,12 +48,14 @@ export default function PortalOverviewTab({
   useEffect(() => {
     if (days === 30 && platform === 'all') return
     startTransition(async () => {
-      const [overview, dailySeries] = await Promise.all([
+      const [overview, dailySeries, validatedCount] = await Promise.all([
         getPortalOverview(contatoId, { days, platform }),
         getPortalDailySeries(contatoId, { days, platform }),
+        getPortalValidatedConversionsCount(contatoId, { days }),
       ])
       setData(overview)
       setSeries(dailySeries)
+      setValidated(validatedCount)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days, platform, contatoId])
@@ -93,6 +99,7 @@ export default function PortalOverviewTab({
       </Card>
 
       <ClientPerformanceChart current={data.current} previous={data.previous} series={series} />
+      <PlatformVsRealCard summary={data.current} validatedManualConversions={validated} />
     </div>
   )
 }

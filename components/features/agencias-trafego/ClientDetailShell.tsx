@@ -11,6 +11,7 @@ import TrafficClientCampaignsCard from '@/components/features/agencias-trafego/T
 import ClientCampaignsTable from '@/components/features/agencias-trafego/ClientCampaignsTable'
 import ClientSyncPanel from '@/components/features/agencias-trafego/ClientSyncPanel'
 import ClientOverviewTab from '@/components/features/agencias-trafego/ClientOverviewTab'
+import PlatformVsRealCard from '@/components/features/trafego/PlatformVsRealCard'
 import ClientPerformanceChart from '@/components/features/agencias-trafego/ClientPerformanceChart'
 import ClientIntelligenceTab from '@/components/features/agencias-trafego/ClientIntelligenceTab'
 import ClientTrackingTab from '@/components/features/agencias-trafego/ClientTrackingTab'
@@ -124,6 +125,7 @@ export default function ClientDetailShell({
     { key: 'contrato', label: 'Contrato & Financeiro' },
   ]
   const hasTrackingData = trackingFunnel.clicks > 0 || trackingLinks.length > 0
+  const validatedManualConversions = portalConversions.filter(c => c.type === 'venda' && c.validatedAt).length
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -156,11 +158,13 @@ export default function ClientDetailShell({
             initialCurrent={performanceCurrent}
             initialPrevious={performancePrevious}
             initialSeries={performanceSeries}
+            validatedManualConversions={validatedManualConversions}
           />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
           <ClientPerformanceChart current={performanceCurrent} previous={performancePrevious} series={performanceSeries} />
+          <PlatformVsRealCard summary={performanceCurrent} validatedManualConversions={validatedManualConversions} />
           <ClientSyncPanel
             orgSlug={orgSlug}
             clientId={clientId}

@@ -17,6 +17,7 @@ import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
 import { computeClientHealthStatus, HEALTH_LABEL, HEALTH_BADGE_CLASS } from '@/lib/trafego/health-status'
 import { computeClientAlerts } from '@/lib/trafego/alerts'
 import MetricChart from '@/components/features/dashboard/MetricChart'
+import PlatformVsRealCard from '@/components/features/trafego/PlatformVsRealCard'
 
 type Period = 'hoje' | '7d' | '30d' | 'mes' | 'custom'
 
@@ -85,7 +86,7 @@ const METRIC_OPTIONS: { key: 'investmentCents' | 'leads' | 'salesRevenueCents'; 
 
 export default function ClientOverviewTab({
   orgSlug, clientId, clientName, profile, lastSyncLabel, lastSyncDaysAgo,
-  initialCurrent, initialPrevious, initialSeries,
+  initialCurrent, initialPrevious, initialSeries, validatedManualConversions = 0,
 }: {
   orgSlug: string
   clientId: string
@@ -96,6 +97,7 @@ export default function ClientOverviewTab({
   initialCurrent: ClientPerformanceSummary
   initialPrevious: ClientPerformanceSummary
   initialSeries: ClientDailyPoint[]
+  validatedManualConversions?: number
 }) {
   const [period, setPeriod] = useState<Period>('30d')
   const [customFrom, setCustomFrom] = useState('')
@@ -272,6 +274,8 @@ export default function ClientOverviewTab({
           )}
         </CardContent>
       </Card>
+
+      <PlatformVsRealCard summary={current} validatedManualConversions={validatedManualConversions} />
 
       {/* Análise automática */}
       <Card>

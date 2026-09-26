@@ -23,7 +23,7 @@ type Report = { id: string; filename: string | null; created_at: string; period_
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions, trackingHealth,
+  contatoId, clientName, orgName, overview, dailySeries, availablePlatforms, validatedConversions, reports, libraryChains, adAccounts, campaigns, conversions, trackingHealth,
 }: {
   contatoId: string
   clientName: string
@@ -31,6 +31,7 @@ export default function PortalDashboard({
   overview: { current: ClientPerformanceSummary; previous: ClientPerformanceSummary }
   dailySeries: ClientDailyPoint[]
   availablePlatforms: string[]
+  validatedConversions: number
   reports: Report[]
   libraryChains: PortalLibraryAssetChain[]
   adAccounts: PortalAdAccount[]
@@ -77,6 +78,7 @@ export default function PortalDashboard({
               initial={overview}
               initialSeries={dailySeries}
               availablePlatforms={availablePlatforms}
+              validatedConversions={validatedConversions}
             />
           </TabsContent>
 
