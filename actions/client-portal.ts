@@ -162,11 +162,17 @@ export async function listPortalAccess(): Promise<PortalClientAccess[]> {
   const supabase = createClient()
   const { data } = await supabase
     .from('client_portal_memberships')
-    .select('contato_id, role, contatos(name), organizations(id, name)')
+    .select('contato_id, role, contatos(name), organizations(id, name, niche)')
     .eq('user_id', user.id)
 
+  const { isTrafficNiche } = await import('@/lib/niche')
+
+  // Portal do Cliente é experiência da vertical Tráfego (issue #23/#27) —
+  // se a org desativou/mudou de nicho depois de convidar o cliente, o
+  // acesso é negado aqui em vez de continuar servindo dados de um módulo
+  // que não deveria mais existir pra essa org (2.8).
   return ((data || []) as any[])
-    .filter(row => row.contatos && row.organizations)
+    .filter(row => row.contatos && row.organizations && isTrafficNiche(row.organizations.niche))
     .map(row => ({
       contatoId: row.contato_id,
       contatoName: row.contatos.name,
