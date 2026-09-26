@@ -261,11 +261,12 @@ _(preencher ao concluir cada passo: data, commit, observações)_
 
 | Passo | Status | Commit | Notas |
 |---|---|---|---|
-| 1.1 | pendente | | |
-| 1.2 | pendente | | |
-| 1.3 | pendente | | |
-| 1.4 | pendente | | |
-| 1.5 | pendente | | |
-| 1.6 | pendente | | |
+| 1.1 | concluído | `463f603` | Upload/comentário/aprovação pelo Portal do Cliente |
+| 1.2 | concluído | `76d1958` | Histórico de versões, selo "Final aprovada", campanha vinculada |
+| 1.3 | concluído | `76d1958` | (mesmo commit de 1.2) |
+| 1.4 | concluído | `1240239` | Picker de criativo do Plano de Mídia migrado de `campaign_creatives` pra Biblioteca (`library_asset_id`); sem dados a migrar (tabelas vazias em produção) |
+| 1.5 | concluído | `4639e06` | Eventos de automação no ciclo de vida do material (`trafego.library.*`), registrados em `app/api/inngest/route.ts` e catalogados em `trigger-meta.ts`; também corrigido gap de auditoria no fluxo público (`respondToLibraryAssetPublic` agora loga `contato_activities`) |
+| 1.6 | concluído | `5c36edf` | Tool `list_library_assets` (read-only, só metadados) registrada no Agent Tool Registry |
+| 1.7 | concluído | — | `next build` completo validado (workaround xlsx); único erro residual é o pré-existente `BlocksImporter.tsx`/`xlsx`, não relacionado a esta entrega. Fase 1 (#23) fechada — ver comentário na issue. |
 | 2.1–2.8 | pendente | | |
 | 3.1–3.8 | pendente | | |
