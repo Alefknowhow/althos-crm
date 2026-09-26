@@ -17,7 +17,14 @@ import { createHmac } from 'crypto'
 export const GRAPH_VERSION = 'v26.0'
 const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`
 
-/** Só leitura de relatórios de campanha — nada de criar/editar anúncios. */
+/** Só leitura de relatórios de campanha — nada de criar/editar anúncios.
+ *  Ativar escrita (pausar/retomar campanha, mudar orçamento — issue #22,
+ *  passo 3.8, já implementado em lib/ads/providers/meta.ts atrás de
+ *  META_ADS_WRITE_ENABLED) exige: (1) adicionar `ads_management` a este
+ *  escopo, (2) passar App Review da Meta pra esse escopo, (3) reconectar
+ *  todas as contas já conectadas (o token antigo só tem ads_read), (4) só
+ *  então setar META_ADS_WRITE_ENABLED=true. Nenhum desses passos foi feito
+ *  — não mudar ADS_SCOPES nem setar a env sem o usuário confirmar. */
 export const ADS_SCOPES = 'ads_read'
 
 export function isMetaAdsOAuthConfigured(): boolean {

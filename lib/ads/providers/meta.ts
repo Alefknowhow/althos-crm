@@ -4,7 +4,7 @@
  * escrita fica `false` até 3.8 (atrás de `META_ADS_WRITE_ENABLED`).
  */
 
-import type { AdsCapabilities, AdsProviderAdapter, AdsAccount, AdsCampaign, AdsAdSet, AdsAd, AdsInsight } from '@/lib/ads/types'
+import type { AdsCapabilities, AdsProviderAdapter, AdsAccount, AdsCampaign, AdsAdSet, AdsAd, AdsInsight, AdsMutationResult } from '@/lib/ads/types'
 
 const WRITE_ENABLED = process.env.META_ADS_WRITE_ENABLED === 'true'
 
@@ -20,6 +20,20 @@ export const metaAdsCapabilities: AdsCapabilities = {
   updateBudget: WRITE_ENABLED,
   createCampaign: false,
   uploadOfflineConversion: false, // CAPI já cobre isso por outro caminho (lib/meta/capi.ts)
+}
+
+async function setCampaignStatus(campaignExternalId: string, status: 'ACTIVE' | 'PAUSED', token: string): Promise<AdsMutationResult> {
+  const { fetchMetaCampaignById, updateMetaCampaignStatus } = await import('@/lib/meta/ads')
+  try {
+    const before = await fetchMetaCampaignById(campaignExternalId, token)
+    if (before?.status === status) return { ok: true, before: { status: before.status }, after: { status: before.status } }
+
+    await updateMetaCampaignStatus(campaignExternalId, status, token)
+    const after = await fetchMetaCampaignById(campaignExternalId, token)
+    return { ok: true, before: { status: before?.status ?? null }, after: { status: after?.status ?? status } }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Erro ao mudar status da campanha na Meta' }
+  }
 }
 
 export const metaAdsAdapter: AdsProviderAdapter = {
@@ -66,9 +80,35 @@ export const metaAdsAdapter: AdsProviderAdapter = {
     }))
   },
 
-  // pauseCampaign/resumeCampaign/updateAdSetBudget: implementados na 3.8,
-  // atrás de META_ADS_WRITE_ENABLED. Ausentes aqui até lá (capability já
-  // reporta false, então getAdsAdapter nunca deveria chamá-los antes).
+  // pauseCampaign/resumeCampaign/updateAdSetBudget (#22, passo 3.8): só
+  // chamadas quando a capability correspondente é true, ou seja, só com
+  // META_ADS_WRITE_ENABLED=true (não setada em produção). Idempotentes:
+  // relêem o estado atual antes de mutar e não repetem a chamada se o
+  // estado já é o desejado. Verificação pós-execução: relê o objeto e
+  // devolve before/after pro chamador auditar (agent_pending_approvals.result).
+
+  async pauseCampaign(campaignExternalId, token): Promise<AdsMutationResult> {
+    return setCampaignStatus(campaignExternalId, 'PAUSED', token)
+  },
+
+  async resumeCampaign(campaignExternalId, token): Promise<AdsMutationResult> {
+    return setCampaignStatus(campaignExternalId, 'ACTIVE', token)
+  },
+
+  async updateAdSetBudget(adSetExternalId, dailyBudgetCents, token): Promise<AdsMutationResult> {
+    const { fetchMetaAdSetById, updateMetaAdSetDailyBudget } = await import('@/lib/meta/ads')
+    try {
+      const before = await fetchMetaAdSetById(adSetExternalId, token)
+      const beforeBudget = before?.daily_budget != null ? Number(before.daily_budget) : null
+      if (beforeBudget === dailyBudgetCents) return { ok: true, before: { dailyBudgetCents: beforeBudget }, after: { dailyBudgetCents: beforeBudget } }
+
+      await updateMetaAdSetDailyBudget(adSetExternalId, dailyBudgetCents, token)
+      const after = await fetchMetaAdSetById(adSetExternalId, token)
+      return { ok: true, before: { dailyBudgetCents: beforeBudget }, after: { dailyBudgetCents: after?.daily_budget != null ? Number(after.daily_budget) : dailyBudgetCents } }
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Erro ao atualizar orçamento na Meta' }
+    }
+  },
 
   async fetchAccounts(): Promise<AdsAccount[]> {
     // ad_accounts já é lido direto do Supabase (não da Meta) em todo o

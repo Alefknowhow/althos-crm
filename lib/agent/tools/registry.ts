@@ -32,6 +32,9 @@ import {
   getClientAlertsTool, getClientAlertsShape,
   getSearchTermsTool, getSearchTermsShape,
   listMediaPlanTool, listMediaPlanShape,
+  pauseCampaignTool, pauseCampaignShape,
+  resumeCampaignTool,
+  updateBudgetTool, updateBudgetShape,
 } from '@/lib/agent/tools/ads'
 
 /**
@@ -68,6 +71,9 @@ export const TOOL_REGISTRY: { tool: ToolDef<any>; inputShape: Record<string, any
   { tool: getClientAlertsTool, inputShape: getClientAlertsShape },
   { tool: getSearchTermsTool, inputShape: getSearchTermsShape },
   { tool: listMediaPlanTool, inputShape: listMediaPlanShape },
+  { tool: pauseCampaignTool, inputShape: pauseCampaignShape },
+  { tool: resumeCampaignTool, inputShape: pauseCampaignShape },
+  { tool: updateBudgetTool, inputShape: updateBudgetShape },
   ...[...CRM_MODULES, ...VIAGENS_MODULES, ...CLINICAS_IMOVEIS_MODULES, ...SEGUROS_TRAFEGO_MODULES, ...AGENDA_MODULES]
     .flatMap(buildModuleTools),
 ]

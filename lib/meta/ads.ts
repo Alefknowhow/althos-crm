@@ -104,6 +104,52 @@ async function metaGet(path: string, params: Record<string, string>, token: stri
   return json
 }
 
+/** POST na Graph API — só chamado por lib/ads/providers/meta.ts, atrás de
+ *  META_ADS_WRITE_ENABLED (issue #22, passo 3.8). Nunca usado fora dali. */
+async function metaPost(path: string, body: Record<string, string>, token: string) {
+  const res = await fetch(`${GRAPH}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ ...body, access_token: token }),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error?.message || `Falha na API da Meta (${res.status})`)
+  return json
+}
+
+/** Pausa/retoma uma campanha (ACTIVE/PAUSED) — mutação real na Meta. */
+export async function updateMetaCampaignStatus(campaignExternalId: string, status: 'ACTIVE' | 'PAUSED', token: string): Promise<void> {
+  await metaPost(`/${campaignExternalId}`, { status }, token)
+}
+
+/** Atualiza o orçamento diário (em centavos) de um Conjunto de Anúncios. */
+export async function updateMetaAdSetDailyBudget(adSetExternalId: string, dailyBudgetCents: number, token: string): Promise<void> {
+  await metaPost(`/${adSetExternalId}`, { daily_budget: String(dailyBudgetCents) }, token)
+}
+
+/** Busca UMA campanha pelo próprio id (diferente de fetchMetaCampaigns,
+ *  que lista as campanhas de uma conta) — mesmo uso de fetchMetaAdSetById. */
+export async function fetchMetaCampaignById(campaignExternalId: string, token: string): Promise<MetaCampaign | null> {
+  try {
+    const json = await metaGet(`/${campaignExternalId}`, { fields: 'id,name,objective,status,start_time,stop_time' }, token)
+    return json as MetaCampaign
+  } catch {
+    return null
+  }
+}
+
+/** Busca UM Conjunto de Anúncios pelo próprio id (diferente de
+ *  fetchMetaAdSets, que lista os filhos de uma campanha) — usado pra ler o
+ *  estado "antes"/"depois" de uma mutação (idempotência + verificação). */
+export async function fetchMetaAdSetById(adSetExternalId: string, token: string): Promise<MetaAdSet | null> {
+  try {
+    const json = await metaGet(`/${adSetExternalId}`, { fields: 'id,name,status,daily_budget,effective_status' }, token)
+    return json as MetaAdSet
+  } catch {
+    return null
+  }
+}
+
 /**
  * Resolve o ad_id (source_id do `referral` de uma conversa de WhatsApp
  * iniciada por anúncio) pro campaign_id externo dono desse anúncio — usado

@@ -17,6 +17,15 @@ describe('Ads Tool Layer — capability gating', () => {
   })
 })
 
+describe('Ads Tool Layer — write capability gating (3.8)', () => {
+  it('Meta adapter has no write methods enabled by default (META_ADS_WRITE_ENABLED unset)', () => {
+    const adapter = getAdsAdapter('meta')
+    expect(adapter.capabilities.pauseCampaign).toBe(false)
+    expect(adapter.capabilities.resumeCampaign).toBe(false)
+    expect(adapter.capabilities.updateBudget).toBe(false)
+  })
+})
+
 describe('Ads Tool Layer — Meta adapter normalization', () => {
   it('normalizes fetchCampaigns from lib/meta/ads fixture (no network)', async () => {
     vi.doMock('@/lib/meta/ads', () => ({

@@ -178,6 +178,105 @@ export const listMediaPlanShape = {
   client: z.string().describe('ID (UUID) ou nome do cliente'),
 }
 
+// ── Mutation tools (#22, passo 3.8) — requiresApproval:true sempre; a
+// capability real (pauseCampaign/updateBudget) só é true com
+// META_ADS_WRITE_ENABLED=true (não setada em produção), então mesmo depois
+// de aprovadas, o handler abaixo retorna erro claro em vez de silenciosamente
+// não fazer nada. checkAdsPolicyForMutation roda ANTES do handler tentar
+// qualquer chamada real — nunca confia no que o agente "decidiu".
+
+export const pauseCampaignShape = {
+  campaignId: z.string().describe('ID interno (UUID) da campanha, não o external_id da Meta'),
+}
+
+export const pauseCampaignTool: ToolDef<{ campaignId: string }> = {
+  name: 'ads_pause_campaign',
+  description: 'Pausa uma campanha na Meta. Exige aprovação humana antes de executar — a mudança só acontece de fato depois de revisada em Configurações → Aprovações.',
+  riskLevel: 'HIGH',
+  requiresApproval: true,
+  permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
+  handler: async (ctx, input) => {
+    const resolved = await resolveCampaignAccount(ctx, input.campaignId)
+    if (!resolved) throw new Error('Campanha não encontrada nesta organização')
+    const adapter = getAdsAdapter(resolved.provider)
+    const supabaseAdmin = createAdminClient()
+    const { checkAdsPolicyForMutation } = await import('@/actions/ads-policies')
+    const policy = await checkAdsPolicyForMutation(supabaseAdmin, ctx.orgId, 'pause')
+    if (!policy.allowed) throw new Error(policy.reason)
+    if (!adapter.capabilities.pauseCampaign || !adapter.pauseCampaign) {
+      throw new Error('Escrita na Meta não habilitada (requer permissão ads_management + App Review + META_ADS_WRITE_ENABLED=true)')
+    }
+    const token = await resolveAdsToken(supabaseAdmin, ctx.orgId, resolved.provider)
+    if (!token) throw new Error('Token da conta de anúncio ausente ou expirado')
+    const result = await adapter.pauseCampaign(resolved.campaignExternalId, token)
+    if (!result.ok) throw new Error(result.error)
+    return result
+  },
+}
+
+export const resumeCampaignTool: ToolDef<{ campaignId: string }> = {
+  name: 'ads_resume_campaign',
+  description: 'Retoma (ACTIVE) uma campanha pausada na Meta. Exige aprovação humana antes de executar.',
+  riskLevel: 'HIGH',
+  requiresApproval: true,
+  permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
+  handler: async (ctx, input) => {
+    const resolved = await resolveCampaignAccount(ctx, input.campaignId)
+    if (!resolved) throw new Error('Campanha não encontrada nesta organização')
+    const adapter = getAdsAdapter(resolved.provider)
+    const supabaseAdmin = createAdminClient()
+    const { checkAdsPolicyForMutation } = await import('@/actions/ads-policies')
+    const policy = await checkAdsPolicyForMutation(supabaseAdmin, ctx.orgId, 'resume')
+    if (!policy.allowed) throw new Error(policy.reason)
+    if (!adapter.capabilities.resumeCampaign || !adapter.resumeCampaign) {
+      throw new Error('Escrita na Meta não habilitada (requer permissão ads_management + App Review + META_ADS_WRITE_ENABLED=true)')
+    }
+    const token = await resolveAdsToken(supabaseAdmin, ctx.orgId, resolved.provider)
+    if (!token) throw new Error('Token da conta de anúncio ausente ou expirado')
+    const result = await adapter.resumeCampaign(resolved.campaignExternalId, token)
+    if (!result.ok) throw new Error(result.error)
+    return result
+  },
+}
+
+export const updateBudgetShape = {
+  adSetExternalId: z.string().describe('ID externo (Meta) do conjunto de anúncios'),
+  client: z.string().describe('ID (UUID) ou nome do cliente — usado só pra resolver a org/token'),
+  dailyBudgetCents: z.number().int().min(100).describe('Novo orçamento diário em centavos'),
+  currentDailyBudgetCents: z.number().int().min(0).describe('Orçamento diário atual, em centavos — usado só pra checar o limite de variação da política'),
+}
+
+export const updateBudgetTool: ToolDef<{ adSetExternalId: string; client: string; dailyBudgetCents: number; currentDailyBudgetCents: number }> = {
+  name: 'ads_update_budget',
+  description: 'Muda o orçamento diário de um Conjunto de Anúncios na Meta. Exige aprovação humana; a mudança percentual é checada contra o limite configurado nas políticas da org.',
+  riskLevel: 'HIGH',
+  requiresApproval: true,
+  permissionKey: 'trafego',
+  capabilityKey: 'vertical.traffic',
+  handler: async (ctx, input) => {
+    const resolved = await resolveClient(ctx, input.client)
+    if (!resolved) throw new Error(`Cliente "${input.client}" não encontrado`)
+    const adapter = getAdsAdapter('meta')
+    const supabaseAdmin = createAdminClient()
+    const { checkAdsPolicyForMutation } = await import('@/actions/ads-policies')
+    const changePct = input.currentDailyBudgetCents > 0
+      ? ((input.dailyBudgetCents - input.currentDailyBudgetCents) / input.currentDailyBudgetCents) * 100
+      : 100
+    const policy = await checkAdsPolicyForMutation(supabaseAdmin, ctx.orgId, 'budget_change', changePct)
+    if (!policy.allowed) throw new Error(policy.reason)
+    if (!adapter.capabilities.updateBudget || !adapter.updateAdSetBudget) {
+      throw new Error('Escrita na Meta não habilitada (requer permissão ads_management + App Review + META_ADS_WRITE_ENABLED=true)')
+    }
+    const token = await resolveAdsToken(supabaseAdmin, ctx.orgId, 'meta')
+    if (!token) throw new Error('Token da conta de anúncio ausente ou expirado')
+    const result = await adapter.updateAdSetBudget(input.adSetExternalId, input.dailyBudgetCents, token)
+    if (!result.ok) throw new Error(result.error)
+    return result
+  },
+}
+
 export const listMediaPlanTool: ToolDef<{ client: string }> = {
   name: 'list_media_plan',
   description: 'Plano de mídia atual (estratégia/intenção) de um cliente — estrutura Campanha→Conjunto→Anúncio planejada, para comparar com o que está de fato publicado.',

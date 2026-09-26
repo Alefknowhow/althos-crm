@@ -16,6 +16,29 @@ import { ShieldCheck, Loader2, Check, X } from 'lucide-react'
 import { approveAgentAction, rejectAgentAction } from '@/actions/agent-approvals'
 import type { PendingApproval } from '@/lib/agent/approvals'
 
+/** Renderer legível por tool (issue #22, passo 3.4) — evita mostrar JSON
+ *  cru pras mutation tools de Ads (as únicas que existem hoje com
+ *  requiresApproval:true). Tool sem renderer específico cai no JSON padrão. */
+const APPROVAL_RENDERERS: Record<string, (input: Record<string, unknown>) => string> = {
+  ads_pause_campaign: input => `Pausar a campanha (id interno ${input.campaignId})`,
+  ads_resume_campaign: input => `Retomar (ativar) a campanha (id interno ${input.campaignId})`,
+  ads_update_budget: (input) => {
+    const from = Number(input.currentDailyBudgetCents) / 100
+    const to = Number(input.dailyBudgetCents) / 100
+    const pct = from > 0 ? (((to - from) / from) * 100).toFixed(0) : '—'
+    return `Orçamento diário: R$ ${from.toFixed(2)} → R$ ${to.toFixed(2)} (${Number(pct) >= 0 ? '+' : ''}${pct}%)`
+  },
+}
+
+function renderApprovalInput(tool: string, input: Record<string, unknown> | null): string {
+  if (!input) return ''
+  const renderer = APPROVAL_RENDERERS[tool]
+  if (renderer) {
+    try { return renderer(input) } catch { /* cai pro JSON abaixo */ }
+  }
+  return JSON.stringify(input, null, 2)
+}
+
 const STATUS_LABEL: Record<PendingApproval['status'], string> = {
   pending: 'Pendente',
   approved: 'Aprovado',
@@ -82,7 +105,11 @@ export default function AgentApprovalsView({
                   <p className="text-sm font-medium">{a.tool}</p>
                   <p className="text-xs text-muted-foreground truncate">agente: {a.agent_label} · {new Date(a.created_at).toLocaleString('pt-BR')}</p>
                   {a.input && (
-                    <pre className="mt-1.5 text-[11px] bg-muted/50 rounded-lg px-2 py-1.5 overflow-x-auto max-w-xl">{JSON.stringify(a.input, null, 2)}</pre>
+                    APPROVAL_RENDERERS[a.tool] ? (
+                      <p className="mt-1.5 text-xs bg-muted/50 rounded-lg px-2.5 py-1.5 max-w-xl">{renderApprovalInput(a.tool, a.input)}</p>
+                    ) : (
+                      <pre className="mt-1.5 text-[11px] bg-muted/50 rounded-lg px-2 py-1.5 overflow-x-auto max-w-xl">{renderApprovalInput(a.tool, a.input)}</pre>
+                    )
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
