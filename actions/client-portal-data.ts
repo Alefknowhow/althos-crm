@@ -15,6 +15,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getUser } from '@/lib/supabase/types'
 import { requirePortalAccess } from '@/actions/client-portal'
+import type { DrillDownError, DrillDownRow } from '@/actions/marketing-overview'
 
 export type PortalConversion = {
   id: string
@@ -101,4 +102,58 @@ export async function listPortalCampaigns(contatoId: string, days = 30): Promise
   const { listCampaignsByClientCore } = await import('@/actions/marketing-accounts')
   const data = await listCampaignsByClientCore(admin, access.organizationId, contatoId, days)
   return (data as unknown) as PortalCampaign[]
+}
+
+/** Drill-down Meta Campanha → Conjunto de Anúncios (issue #27/#61 2.2) —
+ *  pro Portal, sob demanda (só quando o cliente expande uma campanha).
+ *  Confirma que a campanha pertence a uma ad_account **deste** contato
+ *  antes de buscar qualquer coisa na Meta — nunca aceita um campaignId
+ *  "solto" vindo do client. Token da org nunca sai do server. Google não
+ *  tem integração viva: contas 'google' simplesmente não têm drill-down
+ *  (ficam só no nível de campanha, já mostrado em listPortalCampaigns). */
+export async function listPortalCampaignChildren(
+  contatoId: string,
+  campaignId: string,
+): Promise<{ ok: true; rows: DrillDownRow[] } | { ok: false; error: DrillDownError | 'not_traffic_client' }> {
+  const access = await requirePortalAccess(contatoId)
+  const admin = createAdminClient()
+
+  const { data: campaign } = await admin
+    .from('campaigns')
+    .select('id, external_id, ad_account_id, ad_accounts!inner(id, contato_id, organization_id, provider)')
+    .eq('id', campaignId)
+    .eq('organization_id', access.organizationId)
+    .maybeSingle()
+  const account = (campaign as any)?.ad_accounts
+  if (!campaign?.external_id || !account || account.contato_id !== contatoId) {
+    return { ok: false as const, error: 'not_found' as DrillDownError }
+  }
+  if (account.provider !== 'meta') return { ok: false as const, error: 'not_traffic_client' as const }
+
+  const { data: orgRow } = await admin
+    .from('organizations')
+    .select('meta_ads_access_token')
+    .eq('id', access.organizationId)
+    .maybeSingle()
+  if (!orgRow?.meta_ads_access_token) return { ok: false as const, error: 'token_expired' as DrillDownError }
+
+  const { fetchMetaAdSets, fetchMetaInsights } = await import('@/lib/meta/ads')
+  const { summarizeInsights, classifyMetaError } = await import('@/actions/marketing-drilldown')
+  const until = new Date().toISOString().slice(0, 10)
+  const since = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10)
+
+  try {
+    const adSets = await fetchMetaAdSets(campaign.external_id, orgRow.meta_ads_access_token)
+    const rows: DrillDownRow[] = []
+    for (const as of adSets) {
+      let insights: Awaited<ReturnType<typeof fetchMetaInsights>> = []
+      try {
+        insights = await fetchMetaInsights(as.id, orgRow.meta_ads_access_token, since, until)
+      } catch { /* sem métricas nesse período pra esse CJ */ }
+      rows.push({ id: as.id, name: as.name, status: (as.effective_status || as.status || '').toLowerCase(), ...summarizeInsights(insights) })
+    }
+    return { ok: true as const, rows }
+  } catch (e: any) {
+    return { ok: false as const, error: classifyMetaError(e) }
+  }
 }

@@ -3,10 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LogOut, FileText, Megaphone } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
 import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
 import { type PortalAdAccount, type PortalCampaign, type PortalConversion } from '@/actions/client-portal-data'
 import type { PortalLibraryAssetChain } from '@/actions/client-portal-library'
@@ -14,12 +12,7 @@ import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafe
 import PortalConversionsCard from './PortalConversionsCard'
 import PortalLibraryTab from './PortalLibraryTab'
 import PortalOverviewTab from './PortalOverviewTab'
-
-const CAMPAIGN_STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  active: { label: 'Ativa', className: 'bg-green-100 text-green-800 border-green-200' },
-  paused: { label: 'Pausada', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  archived: { label: 'Arquivada', className: 'bg-muted text-muted-foreground' },
-}
+import PortalCampaignsTable from './PortalCampaignsTable'
 
 type Report = { id: string; filename: string | null; created_at: string; period_start: string | null; period_end: string | null }
 
@@ -105,38 +98,7 @@ export default function PortalDashboard({
             <Card>
               <CardHeader><CardTitle className="text-sm">Campanhas (30 dias)</CardTitle></CardHeader>
               <CardContent>
-                {campaigns.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma campanha nesse período.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b">
-                          <th className="py-2 pr-3 font-medium">Campanha</th>
-                          <th className="py-2 pr-3 font-medium">Status</th>
-                          <th className="py-2 pr-3 font-medium text-right">Investimento</th>
-                          <th className="py-2 pr-3 font-medium text-right">Leads</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {campaigns.map(c => {
-                          const status = CAMPAIGN_STATUS_LABEL[c.status] || CAMPAIGN_STATUS_LABEL.active
-                          return (
-                            <tr key={c.id}>
-                              <td className="py-2 pr-3">
-                                <div className="font-medium truncate max-w-[220px]">{c.name}</div>
-                                <div className="text-xs text-muted-foreground">{c.ad_accounts?.name || '—'}</div>
-                              </td>
-                              <td className="py-2 pr-3"><Badge variant="outline" className={status.className}>{status.label}</Badge></td>
-                              <td className="py-2 pr-3 text-right tabular-nums font-medium">{formatCurrency(c.metrics.spend_cents)}</td>
-                              <td className="py-2 pr-3 text-right tabular-nums">{c.metrics.leads || '—'}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <PortalCampaignsTable contatoId={contatoId} campaigns={campaigns} />
               </CardContent>
             </Card>
           </TabsContent>
