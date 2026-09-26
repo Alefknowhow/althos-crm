@@ -8,7 +8,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/u
 import { Plus, Layers, Loader2 } from 'lucide-react'
 import {
   createMediaPlan, updateMediaPlan, approveMediaPlan, getMediaPlanWithItems,
-  createMediaPlanItem, updateMediaPlanItem, deleteMediaPlanItem,
+  createMediaPlanItem, updateMediaPlanItem, deleteMediaPlanItem, linkMediaPlanItemToExternal,
   type MediaPlan, type MediaPlanItem, type MediaPlanLevel, type MediaPlanPlatform,
 } from '@/actions/media-plans'
 import { MediaPlanItemRow, MediaPlanItemEditForm } from '@/components/features/agencias-trafego/MediaPlanItemNode'
@@ -29,13 +29,14 @@ import {
  * actions/media-plans.ts e MediaPlanItemNode.tsx (linha/formulário de um item).
  */
 export default function MediaPlanBuilder({
-  orgSlug, contatoId, plans: initialPlans, initialItems, creatives,
+  orgSlug, contatoId, plans: initialPlans, initialItems, creatives, publishedCampaigns,
 }: {
   orgSlug: string
   contatoId: string
   plans: MediaPlan[]
   initialItems: MediaPlanItem[]
   creatives: MediaPlanCreative[]
+  publishedCampaigns?: { id: string; name: string }[]
 }) {
   const [plans, setPlans] = useState(initialPlans)
   const [activePlanId, setActivePlanId] = useState<string | null>(plans[0]?.id ?? null)
@@ -113,6 +114,7 @@ export default function MediaPlanBuilder({
         funnel_stage: null, name: `Novo ${LEVEL_LABEL[level].toLowerCase()}`, objective: null,
         status: 'planned', budget_cents: null, budget_type: null, creative_id: null, library_asset_id: null, config: {},
         order_index: orderIndex,
+        external_id: null, external_provider: null, sync_status: 'draft', last_synced_at: null, last_sync_error: null,
       }])
       // Cria e já seleciona — ao criar uma campanha, a coluna de conjuntos
       // abre imediatamente pronta pro próximo passo (pedido explícito pra
@@ -138,6 +140,16 @@ export default function MediaPlanBuilder({
       })
       if (!res.ok) toast.error(res.error)
       else toast.success('Salvo')
+    })
+  }
+
+  function linkItem(itemId: string, campaignId: string) {
+    startTransition(async () => {
+      const res = await linkMediaPlanItemToExternal(orgSlug, itemId, campaignId)
+      if (!res.ok) { toast.error(res.error); return }
+      const fresh = await getMediaPlanWithItems(orgSlug, activePlanId!)
+      if (fresh) setItems(fresh.items)
+      toast.success('Vinculado à campanha publicada.')
     })
   }
 
@@ -223,7 +235,7 @@ export default function MediaPlanBuilder({
                   />
                   {c.id === selectedCampaignId && (
                     <div className="mt-1">
-                      <MediaPlanItemEditForm item={c} creatives={creatives} onPatch={patchItem} onSave={saveItem} onRemove={removeItem} isPending={isPending} />
+                      <MediaPlanItemEditForm item={c} creatives={creatives} publishedCampaigns={publishedCampaigns} onPatch={patchItem} onSave={saveItem} onRemove={removeItem} onLink={linkItem} isPending={isPending} />
                     </div>
                   )}
                 </div>

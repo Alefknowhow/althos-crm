@@ -39,14 +39,24 @@ export function MediaPlanItemRow({ item, selected, onSelect }: { item: MediaPlan
  *  MediaPlanBuilder, cada coluna só lista os itens do nível dela. Campos
  *  dimensionados pelo tamanho real do conteúdo (datas/números curtos não
  *  ocupam a largura inteira). */
+const SYNC_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Rascunho', className: 'bg-muted text-muted-foreground' },
+  published: { label: 'Sincronizado', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  diverged: { label: 'Divergente', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+  sync_error: { label: 'Erro de sincronização', className: 'bg-red-100 text-red-800 border-red-200' },
+  external_change: { label: 'Alterado na plataforma', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+}
+
 export function MediaPlanItemEditForm({
-  item, creatives, onPatch, onSave, onRemove, isPending,
+  item, creatives, publishedCampaigns, onPatch, onSave, onRemove, onLink, isPending,
 }: {
   item: MediaPlanItem
   creatives: MediaPlanCreative[]
+  publishedCampaigns?: { id: string; name: string }[]
   onPatch: (id: string, patch: Partial<MediaPlanItem>) => void
   onSave: (id: string) => void
   onRemove: (id: string) => void
+  onLink?: (itemId: string, campaignId: string) => void
   isPending: boolean
 }) {
   return (
@@ -94,6 +104,33 @@ export function MediaPlanItemEditForm({
       </div>
 
       <PlatformConfigFields item={item} onPatch={onPatch} />
+
+      {item.level === 'campaign' && (
+        <div className="space-y-1 max-w-xs">
+          <Label className="text-xs flex items-center gap-1.5">
+            Vínculo com a plataforma
+            {item.external_id && (
+              <Badge variant="outline" className={cn('text-[10px]', (SYNC_STATUS_LABEL[item.sync_status] || SYNC_STATUS_LABEL.draft).className)}>
+                {(SYNC_STATUS_LABEL[item.sync_status] || SYNC_STATUS_LABEL.draft).label}
+              </Badge>
+            )}
+          </Label>
+          {item.external_id ? (
+            <p className="text-xs text-muted-foreground">
+              {item.last_sync_error || `Vinculado (id externo ${item.external_id})`}
+            </p>
+          ) : onLink && publishedCampaigns && publishedCampaigns.length > 0 ? (
+            <Select onValueChange={v => onLink(item.id, v)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vincular à campanha publicada" /></SelectTrigger>
+              <SelectContent>
+                {publishedCampaigns.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-xs text-muted-foreground">Nenhuma campanha publicada pra vincular ainda.</p>
+          )}
+        </div>
+      )}
 
       {item.level === 'ad' && (
         <div className="space-y-1 max-w-xs">

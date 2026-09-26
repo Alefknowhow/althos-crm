@@ -59,6 +59,15 @@ export type MediaPlanItem = {
   library_asset_id: string | null
   config: Record<string, unknown>
   order_index: number
+  /** Vínculo com o objeto real publicado na plataforma (#22, passo 3.5) —
+   *  preenchido manualmente ("Vincular à campanha publicada"); o
+   *  reconciliador (cron trafego/media-plan.reconcile) usa isso pra
+   *  comparar o planejado com o real, nunca sobrescrevendo nenhum dos dois. */
+  external_id: string | null
+  external_provider: 'meta' | 'google' | null
+  sync_status: 'draft' | 'published' | 'diverged' | 'sync_error' | 'external_change'
+  last_synced_at: string | null
+  last_sync_error: string | null
 }
 
 const mediaPlanInput = z.object({
@@ -233,6 +242,35 @@ export async function updateMediaPlanItem(orgSlug: string, itemId: string, raw: 
 
   const supabase = createClient()
   const { error } = await supabase.from('media_plan_items').update(parsed.data).eq('id', itemId).eq('organization_id', org.id)
+  if (error) return { ok: false as const, error: error.message }
+  return { ok: true as const }
+}
+
+/** Vínculo manual com a campanha real publicada na plataforma (#22, passo
+ *  3.5) — primeiro passo antes do reconciliador poder comparar planejado ×
+ *  real. Recebe o **id interno** (UUID) de `campaigns`, nunca o external_id
+ *  cru (resolvido aqui, nunca exposto pro client escolher à mão). */
+export async function linkMediaPlanItemToExternal(orgSlug: string, itemId: string, campaignId: string) {
+  const { org } = await requireAccess(orgSlug)
+  const supabase = createClient()
+
+  const { data: campaign } = await supabase
+    .from('campaigns').select('external_id, ad_accounts!inner(provider)')
+    .eq('id', campaignId).eq('organization_id', org.id).maybeSingle()
+  const provider = (campaign as any)?.ad_accounts?.provider
+  if (!campaign?.external_id || !provider) return { ok: false as const, error: 'Campanha não encontrada.' }
+
+  const { error } = await supabase
+    .from('media_plan_items')
+    .update({
+      external_id: campaign.external_id,
+      external_provider: provider,
+      sync_status: 'published',
+      last_synced_at: new Date().toISOString(),
+      last_sync_error: null,
+    })
+    .eq('id', itemId)
+    .eq('organization_id', org.id)
   if (error) return { ok: false as const, error: error.message }
   return { ok: true as const }
 }

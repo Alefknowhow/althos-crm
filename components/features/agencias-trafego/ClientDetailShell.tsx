@@ -190,6 +190,7 @@ export default function ClientDetailShell({
             plans={mediaPlans}
             initialItems={mediaPlanItems}
             creatives={libraryChains.filter(c => c.latest.kind === 'produzido').map(c => ({ id: c.latest.id, title: c.latest.title }))}
+            publishedCampaigns={campaigns.map(c => ({ id: c.id, name: c.name }))}
           />
         </TabsContent>
 
