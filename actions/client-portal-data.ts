@@ -51,6 +51,16 @@ export async function submitPortalConversion(
     submitted_by: user?.id ?? null,
   })
   if (error) return { ok: false as const, error: error.message }
+
+  try {
+    await admin.from('contato_activities').insert({
+      contato_id: contatoId,
+      organization_id: access.organizationId,
+      type: 'portal_conversion_submitted',
+      payload: { type: input.type, value_cents: input.valueCents ?? null },
+    })
+  } catch { /* auditoria best-effort — nunca falha o registro por causa dela */ }
+
   return { ok: true as const }
 }
 
