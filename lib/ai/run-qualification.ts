@@ -195,8 +195,8 @@ export async function runLeadQualification(
         : { data: null }
 
       if (pipelineMeta?.meta_pixel_id && pipelineMeta?.meta_access_token) {
-        const { sendCapiEvent } = await import('@/lib/meta/capi')
-        await sendCapiEvent({
+        const { sendCapiEventLogged } = await import('@/lib/meta/capi')
+        await sendCapiEventLogged({
           pixelId:     pipelineMeta.meta_pixel_id,
           accessToken: pipelineMeta.meta_access_token,
           eventName:   'NotQualified',
@@ -204,7 +204,7 @@ export async function runLeadQualification(
           email:       lead.email,
           phone:       lead.phone,
           firstName:   lead.name,
-        })
+        }, { supabase, organizationId: orgId, pipelineId: lead.pipeline_id, contatoId: leadId, source: 'qualification' })
       }
     } catch (capiErr: any) {
       // Non-blocking: qualification result already persisted

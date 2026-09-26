@@ -39,7 +39,9 @@ export type CapiEventPayload = {
   actionSource?: 'website' | 'business_messaging'
 }
 
-export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
+export type CapiEventResult = { ok: boolean; httpStatus?: number; error?: string }
+
+export async function sendCapiEvent(payload: CapiEventPayload): Promise<CapiEventResult> {
   const {
     pixelId, accessToken, eventName,
     eventTime = Math.floor(Date.now() / 1000),
@@ -90,6 +92,45 @@ export async function sendCapiEvent(payload: CapiEventPayload): Promise<void> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '(unreadable)')
-    throw new Error(`Meta CAPI ${res.status}: ${body.slice(0, 300)}`)
+    return { ok: false, httpStatus: res.status, error: body.slice(0, 300) }
   }
+  return { ok: true, httpStatus: res.status }
+}
+
+/** Wrapper de `sendCapiEvent` que grava o resultado em `capi_event_log`
+ *  (issue #27/#61, passo 2.3) — best-effort, nunca lança: se o log falhar,
+ *  o envio do evento já aconteceu e não deve ser bloqueado por isso. Não
+ *  muda payload/eventos disparados, só adiciona observabilidade. */
+export async function sendCapiEventLogged(
+  payload: CapiEventPayload,
+  ctx: {
+    supabase: { from: (table: string) => any }
+    organizationId: string
+    pipelineId?: string | null
+    contatoId?: string | null
+    source: 'form' | 'pipeline' | 'qualification' | 'portal_conversion'
+  },
+): Promise<CapiEventResult> {
+  let result: CapiEventResult
+  try {
+    result = await sendCapiEvent(payload)
+  } catch (e: any) {
+    result = { ok: false, error: e?.message || 'Erro desconhecido' }
+  }
+
+  try {
+    await ctx.supabase.from('capi_event_log').insert({
+      organization_id: ctx.organizationId,
+      pipeline_id: ctx.pipelineId || null,
+      contato_id: ctx.contatoId || null,
+      event_name: payload.eventName,
+      event_id: payload.eventId || null,
+      status: result.ok ? 'sent' : 'failed',
+      http_status: result.httpStatus ?? null,
+      error: result.error ?? null,
+      source: ctx.source,
+    })
+  } catch { /* best-effort — log nunca bloqueia o envio */ }
+
+  return result
 }

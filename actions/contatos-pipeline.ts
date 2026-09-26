@@ -166,8 +166,8 @@ export async function moveLeadToStage(
         : { data: null }
 
       if (pipelineMeta?.meta_pixel_id && pipelineMeta?.meta_access_token) {
-        const { sendCapiEvent } = await import('@/lib/meta/capi')
-        await sendCapiEvent({
+        const { sendCapiEventLogged } = await import('@/lib/meta/capi')
+        await sendCapiEventLogged({
           pixelId:     pipelineMeta.meta_pixel_id,
           accessToken: pipelineMeta.meta_access_token,
           eventName:   stage.is_won ? 'Purchase' : 'NotQualified',
@@ -182,7 +182,7 @@ export async function moveLeadToStage(
           ...(stage.is_won && lead.value_cents
             ? { currency: 'BRL', value: lead.value_cents / 100 }
             : {}),
-        })
+        }, { supabase, organizationId: org.id, pipelineId: stage.pipeline_id, contatoId: leadId, source: 'pipeline' })
       }
     } catch (capiErr: any) {
       console.error('[moveLeadToStage] CAPI error:', capiErr?.message)

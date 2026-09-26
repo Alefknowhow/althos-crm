@@ -251,8 +251,8 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
 
   if (pixelId && accessToken) {
     try {
-      const { sendCapiEvent } = await import('@/lib/meta/capi')
-      await sendCapiEvent({
+      const { sendCapiEventLogged } = await import('@/lib/meta/capi')
+      await sendCapiEventLogged({
         pixelId,
         accessToken,
         eventName: 'Lead',
@@ -265,7 +265,7 @@ export async function submitPublicForm(slug: string, rawData: any, utms: any, me
         eventId: leadId || undefined,
         fbc,
         fbp,
-      })
+      }, { supabase: supabaseAdmin, organizationId: form.organization_id, pipelineId: form.pipeline_id, contatoId: leadId, source: 'form' })
     } catch (e: any) {
       console.warn('[submitPublicForm] Meta CAPI Lead event failed:', e?.message)
     }
