@@ -257,7 +257,7 @@ A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (f
 
 | Passo | Status | Commit | Notas |
 |---|---|---|---|
-| A (#15) | pendente | | |
+| A (#15) | concluído | `e9fa982` | seller_id/backoffice_owner_id + UI + evento de automação. Issue fechada |
 | B (#60, #59.2) | pendente | | |
 | C (#59.1 + redesign Reserva + ModuleTabs) | pendente | | refs em docs/design-refs/reservas/ |
 | D.1–D.3 | pendente | | |
