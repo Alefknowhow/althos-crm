@@ -123,6 +123,10 @@ export async function createContract(orgSlug: string, input: {
   if (error || !contract) return { ok: false as const, error: error?.message || 'Erro ao criar contrato' }
   await logEvent(supabase, org.id, contract.id, 'contract.created')
   if (bodyHtml) await logEvent(supabase, org.id, contract.id, 'contract.generated')
+  if (input.relatedEntityType === 'reserva') {
+    const { syncReservaContractTimestamps } = await import('@/actions/contracts-origin')
+    await syncReservaContractTimestamps(supabase, contract.id, 'generated')
+  }
 
   revalidatePath(`/app/${orgSlug}/contratos`)
   return { ok: true as const, id: contract.id }

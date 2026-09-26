@@ -59,7 +59,7 @@ type SaleRow = { id: string; sale_date: string | null; amount_cents: number | nu
  * (MarketingStrategistDock), disponível em qualquer seção.
  */
 export default function ClientDetailShell({
-  orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, libraryChains, sales, activities,
+  orgSlug, clientId, clientName, orgName, profile, accounts, campaigns, libraryChains, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
   trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance, trackingHealth, portalConversions,
@@ -68,8 +68,6 @@ export default function ClientDetailShell({
   orgSlug: string
   clientId: string
   clientName: string
-  clientEmail: string | null
-  clientPhone: string | null
   orgName: string
   profile: TrafficClientProfile | null
   mediaPlans: MediaPlan[]
@@ -253,8 +251,6 @@ export default function ClientDetailShell({
             orgSlug={orgSlug}
             clientId={clientId}
             clientName={clientName}
-            clientEmail={clientEmail}
-            clientPhone={clientPhone}
             profile={profile}
             sales={sales}
           />

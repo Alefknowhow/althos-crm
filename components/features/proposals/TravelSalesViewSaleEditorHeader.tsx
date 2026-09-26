@@ -4,6 +4,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { ArrowLeft, Clock, ExternalLink } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
 import type { Member } from './TravelSalesViewShared'
+import ContractStatusIndicator from '@/components/features/contracts/ContractStatusIndicator'
+import type { ContractStatusInfo } from '@/actions/contracts-origin'
 
 // Cabeçalho do editor de venda — título/subtítulo guiados pelo anexo do
 // redesign ("Lisboa" grande + "Cliente: X · Responsável: Y" pequeno). Os
@@ -11,13 +13,14 @@ import type { Member } from './TravelSalesViewShared'
 // da direita, e a barra de abas (Dados da Reserva/Viajantes/Vouchers/
 // Tarefas/Produtos) fica logo abaixo, em TravelSalesViewSaleEditor.tsx.
 export default function TravelSalesViewSaleEditorHeader({
-  orgSlug, s, sellerName, period, members = [], onChangeSeller, onChangeBackofficeOwner, onBack, actions,
+  orgSlug, s, sellerName, period, members = [], contractStatus, onChangeSeller, onChangeBackofficeOwner, onBack, actions,
 }: {
   orgSlug: string
   s: TravelSaleRow
   sellerName: string | null
   period: string | null
   members?: Member[]
+  contractStatus?: ContractStatusInfo
   onChangeSeller?: (userId: string) => void
   onChangeBackofficeOwner?: (userId: string | null) => void
   onBack: () => void
@@ -35,6 +38,9 @@ export default function TravelSalesViewSaleEditorHeader({
           <span className="truncate">Cliente: {s.client_name || '—'}</span>
           {sellerName && <span>· Responsável: {sellerName}</span>}
           {period && <span>· {period}</span>}
+          {contractStatus !== undefined && (
+            <span>· <ContractStatusIndicator orgSlug={orgSlug} status={contractStatus} originType="reserva" originId={s.id} className="inline" /></span>
+          )}
           {s.created_at && (
             <span className="inline-flex items-center gap-1 truncate" title="Data de criação da reserva">
               <Clock className="w-3 h-3 shrink-0" /> {new Date(s.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}

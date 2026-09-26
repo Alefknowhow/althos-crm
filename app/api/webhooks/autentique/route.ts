@@ -144,6 +144,8 @@ async function handleGlobalContractSigned(supabase: ReturnType<typeof createAdmi
     }).eq('id', contract.id)
     await supabase.from('contract_signers').update({ status: 'signed', signed_at: now }).eq('contract_id', contract.id)
     await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.signed' })
+    const { syncReservaContractTimestamps } = await import('@/actions/contracts-origin')
+    await syncReservaContractTimestamps(supabase as any, contract.id, 'signed')
   } catch (e) {
     console.error('autentique webhook: falha ao processar contrato global', e)
   }

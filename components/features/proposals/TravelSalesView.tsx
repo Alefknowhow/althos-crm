@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ import { TravelSalesFiltersMenu, type ProposalOption, type LeadOption, type Memb
 import { TravelSalesListTable } from './TravelSalesListTable'
 import NewSaleDialog from './TravelSalesViewNewSaleDialog'
 import SaleEditor from './TravelSalesViewSaleEditor'
+import { getContractStatusFor, type ContractStatusInfo } from '@/actions/contracts-origin'
 
 export default function TravelSalesView({
   orgSlug, sales, proposals = [], members = [], leads = [], initialSelectedId, headerAction,
@@ -74,6 +75,13 @@ export default function TravelSalesView({
   }, [sales, query, seller, dateBucket])
 
   const selected = sales.find(s => s.id === selectedId) ?? null
+
+  const [contractStatus, setContractStatus] = useState<ContractStatusInfo | undefined>(undefined)
+  useEffect(() => {
+    setContractStatus(undefined)
+    if (!selected) return
+    getContractStatusFor(orgSlug, 'reserva', selected.id).then(setContractStatus)
+  }, [orgSlug, selected?.id])
   const hasActiveFilters = seller !== 'all' || dateBucket !== 'all'
   function clearFilters() { setSeller('all'); setDateBucket('all') }
 
@@ -211,6 +219,7 @@ export default function TravelSalesView({
               sellerName={sellerName.get(selected.seller_id || selected.created_by || '') ?? null}
               leads={leads}
               members={members}
+              contractStatus={contractStatus}
               onBack={() => setSelectedId(null)}
               onDelete={() => setDeleteId(selected.id)}
               onSave={(patch, generate) => handleSave(selected.id, patch, generate)}

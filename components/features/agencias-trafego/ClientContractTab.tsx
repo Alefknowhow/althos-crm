@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { FileSignature, Wallet, Receipt } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import PlanoContratoManagerDialog from '@/components/features/agencias-trafego/PlanoContratoManagerDialog'
+import ContractStatusIndicator from '@/components/features/contracts/ContractStatusIndicator'
 import ClientPortalAccessCard from '@/components/features/agencias-trafego/ClientPortalAccessCard'
 import type { TrafficClientProfile } from '@/actions/traffic-client-profile'
+import type { ContractStatusInfo } from '@/actions/contracts-origin'
 
 type SaleRow = {
   id: string
@@ -32,17 +33,23 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
  *  aqui é só o histórico financeiro, informativo. Nunca o billing do SaaS
  *  Althos. */
 export default function ClientContractTab({
-  orgSlug, clientId, clientName, clientEmail, clientPhone, profile, sales,
+  orgSlug, clientId, clientName, profile, sales,
 }: {
   orgSlug: string
   clientId: string
   clientName: string
-  clientEmail: string | null
-  clientPhone: string | null
   profile: TrafficClientProfile | null
   sales: SaleRow[]
 }) {
-  const [contractOpen, setContractOpen] = useState(false)
+  const mostRecentSale = sales[0] ?? null
+  const [contractStatus, setContractStatus] = useState<ContractStatusInfo | undefined>(undefined)
+
+  useEffect(() => {
+    if (!mostRecentSale) return
+    import('@/actions/contracts-origin').then(({ getContractStatusFor }) =>
+      getContractStatusFor(orgSlug, 'venda', mostRecentSale.id).then(setContractStatus),
+    )
+  }, [orgSlug, mostRecentSale?.id])
 
   return (
     <div className="space-y-4">
@@ -67,11 +74,17 @@ export default function ClientContractTab({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-sm flex items-center gap-2"><FileSignature className="w-4 h-4" /> Contrato</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setContractOpen(true)}>Gerenciar contrato</Button>
+          {mostRecentSale ? (
+            <ContractStatusIndicator orgSlug={orgSlug} status={contractStatus ?? null} originType="venda" originId={mostRecentSale.id} />
+          ) : (
+            <Link href={`/app/${orgSlug}/contratos`} className="text-xs text-muted-foreground hover:underline">
+              Crie uma venda pra vincular um contrato
+            </Link>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Relação Agência↔Cliente — firmada assim que {clientName} entrou como cliente, independente de vendas.
+            Relação Agência↔Cliente — contrato do módulo global, vinculado à venda mais recente de {clientName} (issue #60).
           </p>
         </CardContent>
       </Card>
@@ -106,18 +119,6 @@ export default function ClientContractTab({
       </Card>
 
       <ClientPortalAccessCard orgSlug={orgSlug} contatoId={clientId} />
-
-      {contractOpen && (
-        <PlanoContratoManagerDialog
-          orgSlug={orgSlug}
-          contatoId={clientId}
-          clientName={clientName}
-          clientEmail={clientEmail}
-          clientPhone={clientPhone}
-          open={contractOpen}
-          onOpenChange={setContractOpen}
-        />
-      )}
     </div>
   )
 }

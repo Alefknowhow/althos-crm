@@ -93,6 +93,8 @@ export async function sendContractForSignature(orgSlug: string, contractId: stri
     }).eq('id', contractId)
 
     await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.sent', payload: { autentique_document_id: doc.id } })
+    const { syncReservaContractTimestamps } = await import('./contracts-origin')
+    await syncReservaContractTimestamps(supabase, contractId, 'generated')
   } catch (e: any) {
     return { ok: false as const, error: e?.message || 'Falha ao enviar para assinatura.' }
   }
@@ -163,6 +165,8 @@ export async function refreshContractStatus(orgSlug: string, contractId: string)
       }).eq('id', contractId)
       await supabase.from('contract_signers').update({ status: 'signed', signed_at: new Date().toISOString() }).eq('contract_id', contractId)
       await supabase.from('contract_events').insert({ organization_id: org.id, contract_id: contractId, type: 'contract.signed' })
+      const { syncReservaContractTimestamps } = await import('./contracts-origin')
+      await syncReservaContractTimestamps(supabase, contractId, 'signed')
     }
 
     revalidatePath(`/app/${orgSlug}/contratos/${contractId}`)

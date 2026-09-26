@@ -124,6 +124,69 @@ export async function getContractOriginOption(orgSlug: string, type: RelatedEnti
   return { id: r.id, label: r.name || 'Contato', contatoId: r.id, contatoName: r.name, amountCents: r.value_cents }
 }
 
+/** Reservas têm seu próprio checklist (contrato_gerado_at/contrato_assinado_at,
+ *  travel_sales) — quando um contrato global com origem 'reserva' é criado
+ *  ou assinado, sincroniza esses timestamps pra o checklist continuar
+ *  funcionando (issue #60, B.3). Best-effort: nunca lança, chamado de
+ *  createContract/sendContractForSignature/webhook/refreshContractStatus. */
+export async function syncReservaContractTimestamps(
+  supabase: ReturnType<typeof createClient>,
+  contractId: string,
+  event: 'generated' | 'signed',
+): Promise<void> {
+  try {
+    const { data: contract } = await supabase
+      .from('contracts').select('related_entity_type, related_entity_id')
+      .eq('id', contractId).maybeSingle()
+    if (!contract || contract.related_entity_type !== 'reserva' || !contract.related_entity_id) return
+    const column = event === 'generated' ? 'contrato_gerado_at' : 'contrato_assinado_at'
+    await supabase.from('travel_sales').update({ [column]: new Date().toISOString() }).eq('id', contract.related_entity_id)
+  } catch { /* best-effort */ }
+}
+
+export type ContractStatusInfo = { contractId: string; status: string } | null
+
+/** Contrato mais recente não cancelado pra uma entidade (issue #60, B.3) —
+ *  usado pelo `ContractStatusIndicator`. Ausente = null (mostra "Ausente"). */
+export async function getContractStatusFor(orgSlug: string, type: RelatedEntityType, id: string): Promise<ContractStatusInfo> {
+  const { org, perm } = await requireContractsAccess(orgSlug)
+  if (!perm.allowed) return null
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contracts')
+    .select('id, status')
+    .eq('organization_id', org.id)
+    .eq('related_entity_type', type)
+    .eq('related_entity_id', id)
+    .neq('status', 'cancelled')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data ? { contractId: data.id, status: data.status } : null
+}
+
+/** Versão em lote — evita N+1 quando uma lista inteira precisa do
+ *  indicador (ex.: SalesTable). */
+export async function getContractStatusMap(orgSlug: string, type: RelatedEntityType, ids: string[]): Promise<Record<string, ContractStatusInfo>> {
+  const { org, perm } = await requireContractsAccess(orgSlug)
+  if (!perm.allowed || ids.length === 0) return {}
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('contracts')
+    .select('id, status, related_entity_id, created_at')
+    .eq('organization_id', org.id)
+    .eq('related_entity_type', type)
+    .in('related_entity_id', ids)
+    .neq('status', 'cancelled')
+    .order('created_at', { ascending: false })
+
+  const map: Record<string, ContractStatusInfo> = {}
+  for (const row of data || []) {
+    if (!map[row.related_entity_id]) map[row.related_entity_id] = { contractId: row.id, status: row.status }
+  }
+  return map
+}
+
 /** Contexto de origem de um contrato (usado na tela de detalhe pra exibir
  *  a venda/cliente vinculados) — só resolve quando related_entity_type
  *  é 'venda', igual ao que a Gestão sempre cria hoje. */

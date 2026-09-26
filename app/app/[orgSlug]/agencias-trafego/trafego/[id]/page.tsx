@@ -136,8 +136,6 @@ export default async function TrafficClientDetailPage({
       orgSlug={params.orgSlug}
       clientId={client.id}
       clientName={client.name}
-      clientEmail={client.email ?? null}
-      clientPhone={client.phone ?? null}
       orgName={org.name}
       profile={profile}
       accounts={accounts as any[]}

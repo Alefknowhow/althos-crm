@@ -14,7 +14,6 @@ import {
 } from '@/actions/travel-sales'
 import CancelTravelSaleDialog from '@/components/features/reservas/CancelTravelSaleDialog'
 import ApplyCreditDialog from '@/components/features/reservas/ApplyCreditDialog'
-import ContratoManagerDialog from '@/components/features/reservas/ContratoManagerDialog'
 import SaleTasksList from '@/components/features/reservas/SaleTasksList'
 import SaleProductsTab from '@/components/features/reservas/SaleProductsTab'
 import { TabsContent } from '@/components/ui/tabs'
@@ -22,16 +21,17 @@ import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
 import {
   Upload, Package, ListTodo, FileText, Users, MoreHorizontal,
-  Save, Ban, Wallet, FileBadge, FileSignature, Trash2,
+  Save, Ban, Wallet, FileBadge, Trash2,
 } from 'lucide-react'
 import { type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
+import type { ContractStatusInfo } from '@/actions/contracts-origin'
 import TravelSalesViewSaleEditorHeader from './TravelSalesViewSaleEditorHeader'
 import TravelSalesViewSaleEditorDadosTab from './TravelSalesViewSaleEditorDadosTab'
 import TravelSalesViewSaleEditorViajantesTab from './TravelSalesViewSaleEditorViajantesTab'
 import TravelSalesViewSaleEditorVouchersTab from './TravelSalesViewSaleEditorVouchersTab'
 
 export default function SaleEditor({
-  orgSlug, sale, saving, sellerName, leads = [], members = [], onSave, onBack, onDelete,
+  orgSlug, sale, saving, sellerName, leads = [], members = [], contractStatus, onSave, onBack, onDelete,
 }: {
   orgSlug: string
   sale: TravelSaleRow
@@ -39,6 +39,7 @@ export default function SaleEditor({
   sellerName: string | null
   leads?: LeadOption[]
   members?: Member[]
+  contractStatus?: ContractStatusInfo
   onSave: (patch: Record<string, any>, generate: boolean) => void
   onBack: () => void
   onDelete: () => void
@@ -55,7 +56,6 @@ export default function SaleEditor({
   const [productsRefreshKey, setProductsRefreshKey] = useState(0)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [creditOpen, setCreditOpen] = useState(false)
-  const [contractOpen, setContractOpen] = useState(false)
   const [operatorOptions, setOperatorOptions] = useState<string[]>([])
   const [extractSource, setExtractSource] = useState<import('@/components/features/reservas/VoucherExtractDialog').ExtractSource | null>(null)
   const [extractLabel, setExtractLabel] = useState<string | null>(null)
@@ -189,6 +189,7 @@ export default function SaleEditor({
         <TravelSalesViewSaleEditorHeader
           orgSlug={orgSlug} s={s} sellerName={sellerName} period={period}
           members={members}
+          contractStatus={contractStatus}
           onChangeSeller={v => set('seller_id', v)}
           onChangeBackofficeOwner={v => set('backoffice_owner_id', v)}
           onBack={onBack}
@@ -202,9 +203,6 @@ export default function SaleEditor({
                   <FileBadge className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Voucher</span>
                 </Button>
               </a>
-              <Button variant="outline" size="sm" title="Contrato" onClick={() => setContractOpen(true)}>
-                <FileSignature className="w-3.5 h-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Contrato</span>
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" aria-label="Mais ações">
@@ -228,13 +226,6 @@ export default function SaleEditor({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <ContratoManagerDialog
-                orgSlug={orgSlug}
-                saleId={s.id}
-                clientName={s.client_name}
-                open={contractOpen}
-                onOpenChange={setContractOpen}
-              />
             </>
           )}
         />

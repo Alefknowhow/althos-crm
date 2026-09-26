@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, FileSignature } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteSale } from '@/actions/sales'
 import { formatCurrency } from '@/lib/utils'
 import SaleDialog from './SaleDialog'
-import PlanoContratoManagerDialog from '@/components/features/agencias-trafego/PlanoContratoManagerDialog'
+import ContractStatusIndicator from '@/components/features/contracts/ContractStatusIndicator'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -42,9 +42,18 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null)
-  // O contrato é Agência↔Cliente (contato_id), não por venda — este botão
-  // na linha da venda é só um atalho pro contrato do cliente dessa venda.
-  const [contractContatoId, setContractContatoId] = useState<string | null>(null)
+  // Contrato agora é o módulo global, com origem 'venda' por linha desta
+  // tabela (issue #60, B.3/B.4) — substitui o antigo atalho pro contrato
+  // fixo por cliente (PlanoContratoManagerDialog, aposentado).
+  const [contractStatusMap, setContractStatusMap] = useState<Record<string, { contractId: string; status: string } | null>>({})
+
+  useEffect(() => {
+    if (!isTraffic || sales.length === 0) return
+    import('@/actions/contracts-origin').then(({ getContractStatusMap }) =>
+      getContractStatusMap(orgSlug, 'venda', sales.map(s => s.id)).then(setContractStatusMap),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgSlug, isTraffic, sales.map(s => s.id).join(',')])
 
   const memberName = (id: string | null) => {
     if (!id) return '—'
@@ -142,16 +151,12 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
                 <TableCell>
                   <div className="flex items-center gap-1">
                     {isTraffic && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        title="Contrato"
-                        disabled={!s.contato_id}
-                        onClick={() => setContractContatoId(s.contato_id)}
-                      >
-                        <FileSignature className="w-3.5 h-3.5" />
-                      </Button>
+                      <ContractStatusIndicator
+                        orgSlug={orgSlug}
+                        status={contractStatusMap[s.id] ?? null}
+                        originType="venda"
+                        originId={s.id}
+                      />
                     )}
                     <SaleDialog
                       orgSlug={orgSlug}
@@ -200,17 +205,6 @@ export default function SalesTable({ orgSlug, sales, members, products, currentU
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {contractContatoId && (
-        <PlanoContratoManagerDialog
-          orgSlug={orgSlug}
-          contatoId={contractContatoId}
-          clientName={sales.find(s => s.contato_id === contractContatoId)?.leads?.name || null}
-          clientEmail={sales.find(s => s.contato_id === contractContatoId)?.leads?.email || null}
-          clientPhone={sales.find(s => s.contato_id === contractContatoId)?.leads?.phone || null}
-          open={!!contractContatoId}
-          onOpenChange={o => !o && setContractContatoId(null)}
-        />
-      )}
     </div>
   )
 }
