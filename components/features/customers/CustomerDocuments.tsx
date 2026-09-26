@@ -293,13 +293,20 @@ export default function CustomerDocuments({
                 <div key={doc.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 group">
                   {isImage ? <FileImage className="w-4 h-4 text-muted-foreground shrink-0" /> : <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{doc.file_name}</div>
+                    <button
+                      type="button"
+                      onClick={() => openPreview(doc)}
+                      className="text-sm font-medium truncate hover:underline hover:text-primary text-left block"
+                      title="Clique para visualizar"
+                    >
+                      {doc.file_name}
+                    </button>
                     <div className="text-[11px] text-muted-foreground truncate">
                       {KIND_LABEL[doc.kind] || doc.kind} · {fileExt(doc)}{doc.file_size_bytes ? ` · ${fmtSize(doc.file_size_bytes)}` : ''} · {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                       {authorName ? ` · ${authorName}` : ''}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 shrink-0 transition-opacity">
                     <button type="button" onClick={() => openPreview(doc)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Visualizar">
                       <Eye className="w-3.5 h-3.5" />
                     </button>
