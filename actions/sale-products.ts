@@ -5,6 +5,7 @@ import { requireAuth, getCurrentOrganization } from '@/lib/supabase/types'
 import { checkMemberPermission } from '@/lib/permissions.server'
 import { revalidatePath } from 'next/cache'
 import type { ExtractedTravelDocument } from '@/lib/ai/document-extract'
+import { includedKeyForKind } from '@/lib/travel/product-types'
 
 export type SaleProductKind =
   | 'aereo' | 'hospedagem' | 'transfer' | 'passeio' | 'cruzeiro' | 'seguro' | 'ingresso' | 'veiculo' | 'outro'
@@ -19,6 +20,19 @@ export type SaleProduct = {
   data: Record<string, any>
   created_at: string
   updated_at: string
+}
+
+/** Sincronização inversa (issue #59/#60, C.2b): ao criar um produto de um
+ *  tipo ainda não marcado em `included_items` (via "Habilitar em Dados", OCR
+ *  ou extração por IA), marca automaticamente a chave canônica — sem
+ *  duplicar e sem apagar nenhum texto livre já presente. Nunca remove nada,
+ *  só adiciona. */
+async function ensureIncludedForProductKind(supabase: ReturnType<typeof createClient>, saleId: string, kind: SaleProductKind) {
+  const key = includedKeyForKind(kind)
+  const { data: sale } = await supabase.from('travel_sales').select('included_items').eq('id', saleId).maybeSingle()
+  const current: string[] = Array.isArray(sale?.included_items) ? sale.included_items : []
+  if (current.includes(key)) return
+  await supabase.from('travel_sales').update({ included_items: [...current, key] }).eq('id', saleId)
 }
 
 async function authorize(orgSlug: string) {
@@ -75,6 +89,7 @@ export async function createSaleProduct(
     .single()
 
   if (error || !data) return { ok: false as const, error: error?.message || 'Erro ao adicionar produto' }
+  await ensureIncludedForProductKind(supabase, saleId, input.kind)
   revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, product: data as SaleProduct }
 }
@@ -241,6 +256,8 @@ export async function bulkCreateSaleProductsFromExtraction(
 
   const { error } = await supabase.from('sale_products').insert(rows)
   if (error) return { ok: false as const, error: error.message }
+  const kinds = new Set(rows.map(r => r.kind))
+  for (const kind of Array.from(kinds)) await ensureIncludedForProductKind(supabase, saleId, kind)
   revalidatePath(`/app/${orgSlug}/reservas`)
   return { ok: true as const, created: rows.length }
 }
