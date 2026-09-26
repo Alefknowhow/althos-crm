@@ -25,6 +25,14 @@ import {
 } from '@/lib/agent/tools/project-templates'
 import { createProjetoTool, createProjetoShape } from '@/lib/agent/tools/project-create'
 import { listLibraryAssetsTool, listLibraryAssetsShape } from '@/lib/agent/tools/library'
+import {
+  getAdAccountInsightsTool, getAdAccountInsightsShape,
+  getAdSetsTool, getAdSetsShape,
+  getAdsTool, getAdsShape,
+  getClientAlertsTool, getClientAlertsShape,
+  getSearchTermsTool, getSearchTermsShape,
+  listMediaPlanTool, listMediaPlanShape,
+} from '@/lib/agent/tools/ads'
 
 /**
  * Etapa 3/4 (Agent Layer) — Tool Registry. Cada entrada pareia o ToolDef
@@ -54,6 +62,12 @@ export const TOOL_REGISTRY: { tool: ToolDef<any>; inputShape: Record<string, any
   { tool: applyProjectTemplateTool, inputShape: applyProjectTemplateShape },
   { tool: createProjetoTool, inputShape: createProjetoShape },
   { tool: listLibraryAssetsTool, inputShape: listLibraryAssetsShape },
+  { tool: getAdAccountInsightsTool, inputShape: getAdAccountInsightsShape },
+  { tool: getAdSetsTool, inputShape: getAdSetsShape },
+  { tool: getAdsTool, inputShape: getAdsShape },
+  { tool: getClientAlertsTool, inputShape: getClientAlertsShape },
+  { tool: getSearchTermsTool, inputShape: getSearchTermsShape },
+  { tool: listMediaPlanTool, inputShape: listMediaPlanShape },
   ...[...CRM_MODULES, ...VIAGENS_MODULES, ...CLINICAS_IMOVEIS_MODULES, ...SEGUROS_TRAFEGO_MODULES, ...AGENDA_MODULES]
     .flatMap(buildModuleTools),
 ]
