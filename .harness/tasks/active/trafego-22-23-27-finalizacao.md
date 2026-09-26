@@ -268,5 +268,14 @@ _(preencher ao concluir cada passo: data, commit, observações)_
 | 1.5 | concluído | `4639e06` | Eventos de automação no ciclo de vida do material (`trafego.library.*`), registrados em `app/api/inngest/route.ts` e catalogados em `trigger-meta.ts`; também corrigido gap de auditoria no fluxo público (`respondToLibraryAssetPublic` agora loga `contato_activities`) |
 | 1.6 | concluído | `5c36edf` | Tool `list_library_assets` (read-only, só metadados) registrada no Agent Tool Registry |
 | 1.7 | concluído | — | `next build` completo validado (workaround xlsx); único erro residual é o pré-existente `BlocksImporter.tsx`/`xlsx`, não relacionado a esta entrega. Fase 1 (#23) fechada — ver comentário na issue. |
-| 2.1–2.8 | pendente | | |
+| 2.1 | concluído | `acb3de3` | Visão Geral com filtro período (7/30/90) + plataforma |
+| 2.2 | concluído | `e0c861a` | Drill-down Meta Campanha → Conjunto (Portal) |
+| 2.3 | concluído | `197ea03` | Log CAPI (`capi_event_log`) + `sendCapiEventLogged` |
+| 2.4 | concluído | `d021921` | Aba/card "Saúde do tracking" (Portal + painel interno) |
+| 2.5 | concluído | `4313ed7` | Conversões do Portal validáveis pelo painel interno + CAPI Purchase |
+| 2.6 | concluído | `263f978` | Card Plataforma × Real, rotulado |
+| 2.7 | concluído | `05f8b6d` | Auditoria: `submitPortalConversion` loga `contato_activities` |
+| 2.8 | concluído | `49ca440` | Portal nega acesso se org saiu do nicho Tráfego |
+| 2.9 | bloqueado | — | Google Ads offline conversions — sem credenciais (developer token/OAuth). Interface fica pra Fase 3.1 |
+| 2.10 | concluído | `6521107` | Fechamento — `next build` completo (achado e corrigido bug real: helpers síncronos exportados de `'use server'` quebravam o webpack, não o tsc) |
 | 3.1–3.8 | pendente | | |
