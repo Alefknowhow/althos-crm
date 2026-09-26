@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { requirePortalAccess, getPortalOverview, getPortalDailySeries, getPortalAdPlatforms, listPortalReports } from '@/actions/client-portal'
-import { listPortalAdAccounts, listPortalCampaigns, listPortalConversions } from '@/actions/client-portal-data'
+import { listPortalAdAccounts, listPortalCampaigns, listPortalConversions, getPortalTrackingHealth } from '@/actions/client-portal-data'
 import { listPortalLibraryAssetChains } from '@/actions/client-portal-library'
 import PortalDashboard from '@/components/features/portal/PortalDashboard'
 
@@ -19,7 +19,7 @@ export default async function PortalClientPage({ params }: { params: { contatoId
     redirect('/portal/login')
   }
 
-  const [overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions] = await Promise.all([
+  const [overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions, trackingHealth] = await Promise.all([
     getPortalOverview(params.contatoId),
     getPortalDailySeries(params.contatoId),
     getPortalAdPlatforms(params.contatoId),
@@ -28,6 +28,7 @@ export default async function PortalClientPage({ params }: { params: { contatoId
     listPortalAdAccounts(params.contatoId),
     listPortalCampaigns(params.contatoId),
     listPortalConversions(params.contatoId),
+    getPortalTrackingHealth(params.contatoId),
   ])
 
   return (
@@ -43,6 +44,7 @@ export default async function PortalClientPage({ params }: { params: { contatoId
       adAccounts={adAccounts}
       campaigns={campaigns}
       conversions={conversions}
+      trackingHealth={trackingHealth}
     />
   )
 }

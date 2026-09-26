@@ -31,7 +31,7 @@ import type { TrafficActivity } from '@/actions/trafego-history'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import type { MetaAdAccountOption } from '@/lib/meta/ads-oauth'
 import type { TrackingLink } from '@/actions/tracking-links'
-import type { ClientTrackingFunnel, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
+import type { ClientTrackingFunnel, ClientTrackingHealth, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
 
 type AdAccount = { id: string; provider: string; name: string; external_id: string | null; status: string }
 type CampaignRow = {
@@ -60,7 +60,7 @@ export default function ClientDetailShell({
   orgSlug, clientId, clientName, clientEmail, clientPhone, orgName, profile, accounts, campaigns, libraryChains, sales, activities,
   performanceCurrent, performancePrevious, performanceSeries, lastSyncLabel, lastSyncDaysAgo,
   orgMetaConnected, assignableOptions, assignedElsewhere,
-  trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance,
+  trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance, trackingHealth,
   mediaPlans, mediaPlanItems, projects, projectColumns, projectTemplates, members,
 }: {
   orgSlug: string
@@ -89,6 +89,7 @@ export default function ClientDetailShell({
   trackingJourneys: ConvertedLead[]
   trackingLinks: TrackingLink[]
   trackingLinkPerformance: LinkPerformance[]
+  trackingHealth: ClientTrackingHealth
   projects: ProjectRow[]
   projectColumns: ProjectColumn[]
   projectTemplates: ProjectTemplateRow[]
@@ -198,6 +199,7 @@ export default function ClientDetailShell({
             journeys={trackingJourneys}
             initialLinks={trackingLinks}
             linkPerformance={trackingLinkPerformance}
+            trackingHealth={trackingHealth}
           />
         </TabsContent>
 

@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LogOut, FileText, Megaphone } from 'lucide-react'
 import { portalLogout, getPortalReportUrl } from '@/actions/client-portal'
-import { type PortalAdAccount, type PortalCampaign, type PortalConversion } from '@/actions/client-portal-data'
+import { type PortalAdAccount, type PortalCampaign, type PortalConversion, type PortalTrackingHealth } from '@/actions/client-portal-data'
 import type { PortalLibraryAssetChain } from '@/actions/client-portal-library'
 import type { ClientPerformanceSummary, ClientDailyPoint } from '@/actions/trafego-performance'
 import PortalConversionsCard from './PortalConversionsCard'
 import PortalLibraryTab from './PortalLibraryTab'
 import PortalOverviewTab from './PortalOverviewTab'
 import PortalCampaignsTable from './PortalCampaignsTable'
+import PortalTrackingTab from './PortalTrackingTab'
 
 type Report = { id: string; filename: string | null; created_at: string; period_start: string | null; period_end: string | null }
 
@@ -22,7 +23,7 @@ type Report = { id: string; filename: string | null; created_at: string; period_
  * estratégia, campanhas ou dados internos: só o que foi liberado pra ele.
  */
 export default function PortalDashboard({
-  contatoId, clientName, orgName, overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions,
+  contatoId, clientName, orgName, overview, dailySeries, availablePlatforms, reports, libraryChains, adAccounts, campaigns, conversions, trackingHealth,
 }: {
   contatoId: string
   clientName: string
@@ -35,6 +36,7 @@ export default function PortalDashboard({
   adAccounts: PortalAdAccount[]
   campaigns: PortalCampaign[]
   conversions: PortalConversion[]
+  trackingHealth: PortalTrackingHealth
 }) {
   const router = useRouter()
 
@@ -65,6 +67,7 @@ export default function PortalDashboard({
             <TabsTrigger value="contas">Contas</TabsTrigger>
             <TabsTrigger value="biblioteca">Biblioteca</TabsTrigger>
             <TabsTrigger value="conversoes">Conversões</TabsTrigger>
+            <TabsTrigger value="tracking">Tracking</TabsTrigger>
             <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           </TabsList>
 
@@ -109,6 +112,10 @@ export default function PortalDashboard({
 
           <TabsContent value="conversoes" className="mt-4">
             <PortalConversionsCard contatoId={contatoId} initial={conversions} />
+          </TabsContent>
+
+          <TabsContent value="tracking" className="mt-4">
+            <PortalTrackingTab health={trackingHealth} />
           </TabsContent>
 
           <TabsContent value="relatorios" className="mt-4">

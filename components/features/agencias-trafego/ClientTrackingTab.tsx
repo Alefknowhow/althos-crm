@@ -7,8 +7,9 @@ import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import TrackingLinksManager from './TrackingLinksManager'
 import ClientFunnelCard from './ClientFunnelCard'
+import TrackingHealthCard from '@/components/features/trafego/TrackingHealthCard'
 import type { TrackingLink } from '@/actions/tracking-links'
-import type { ClientTrackingFunnel, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
+import type { ClientTrackingFunnel, ClientTrackingHealth, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
 
 /**
  * Aba Tracking — sistema de rastreamento próprio (Fase 1). Funil real
@@ -17,7 +18,7 @@ import type { ClientTrackingFunnel, ConvertedLead, LinkPerformance } from '@/act
  * links e a jornada multi-touch de cada lead convertido.
  */
 export default function ClientTrackingTab({
-  orgSlug, clientId, funnel, journeys, initialLinks, linkPerformance,
+  orgSlug, clientId, funnel, journeys, initialLinks, linkPerformance, trackingHealth,
 }: {
   orgSlug: string
   clientId: string
@@ -25,11 +26,13 @@ export default function ClientTrackingTab({
   journeys: ConvertedLead[]
   initialLinks: TrackingLink[]
   linkPerformance: LinkPerformance[]
+  trackingHealth: ClientTrackingHealth
 }) {
   const hasData = funnel.clicks > 0 || initialLinks.length > 0
 
   return (
     <div className="space-y-4">
+      <TrackingHealthCard health={trackingHealth} recentFailures={trackingHealth.recentFailures} />
       <ClientFunnelCard funnel={funnel} hasData={hasData} />
 
       {journeys.length > 0 && (

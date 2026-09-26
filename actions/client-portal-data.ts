@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getUser } from '@/lib/supabase/types'
 import { requirePortalAccess } from '@/actions/client-portal'
 import type { DrillDownError, DrillDownRow } from '@/actions/marketing-overview'
+import type { ClientAlert } from '@/lib/trafego/alerts'
 
 export type PortalConversion = {
   id: string
@@ -155,5 +156,77 @@ export async function listPortalCampaignChildren(
     return { ok: true as const, rows }
   } catch (e: any) {
     return { ok: false as const, error: classifyMetaError(e) }
+  }
+}
+
+export type PortalTrackingHealth = {
+  metaPixelConfigured: boolean
+  lastCapiSendAt: string | null
+  capiFailures7d: number
+  googleAdsConfigured: boolean
+  activeTrackingLinks: number
+  lastClickAt: string | null
+  lastAccountSyncAt: string | null
+  lastAccountSyncDaysAgo: number | null
+  alerts: ClientAlert[]
+}
+
+/** Saúde do tracking, read-only, sem segredo nenhum (#27/#61 2.4) — só
+ *  flags/datas, nunca token/ID sensível. "Último envio CAPI" é o mais
+ *  recente da ORG (não filtrado por lead específico, ver spec) — rotulado
+ *  como "da agência" na UI porque pode vir de qualquer pipeline/canal, não
+ *  necessariamente um lead deste cliente. Alertas: só os de sincronização
+ *  (a lista completa, com CPL/ROAS/leads, fica só pro painel interno). */
+export async function getPortalTrackingHealth(contatoId: string): Promise<PortalTrackingHealth> {
+  const access = await requirePortalAccess(contatoId)
+  const admin = createAdminClient()
+
+  const [{ data: pipelines }, { data: capiLast }, { count: capiFailures }, { data: links }, { data: accounts }] = await Promise.all([
+    admin.from('pipelines').select('meta_pixel_id, google_ads_id').eq('organization_id', access.organizationId),
+    admin.from('capi_event_log').select('created_at, status').eq('organization_id', access.organizationId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('capi_event_log').select('id', { count: 'exact', head: true })
+      .eq('organization_id', access.organizationId).eq('status', 'failed')
+      .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString()),
+    admin.from('tracking_links').select('id').eq('organization_id', access.organizationId).eq('contato_id', contatoId),
+    admin.from('ad_accounts').select('updated_at, created_at').eq('organization_id', access.organizationId).eq('contato_id', contatoId),
+  ])
+
+  const linkIds = (links || []).map(l => l.id)
+  const { data: lastClick } = linkIds.length > 0
+    ? await admin.from('tracking_clicks').select('created_at').in('link_id', linkIds).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    : { data: null }
+
+  const metaPixelConfigured = (pipelines || []).some(p => !!p.meta_pixel_id)
+  const googleAdsConfigured = (pipelines || []).some(p => !!p.google_ads_id)
+
+  const lastSyncedAt = (accounts || [])
+    .map(a => a.updated_at || a.created_at)
+    .filter(Boolean)
+    .sort()
+    .pop() as string | undefined
+  const lastAccountSyncDaysAgo = lastSyncedAt ? Math.floor((Date.now() - new Date(lastSyncedAt).getTime()) / 86_400_000) : null
+
+  const { computeClientAlerts } = await import('@/lib/trafego/alerts')
+  const { getClientPerformanceSummaryCore } = await import('@/actions/trafego-performance')
+  const now = new Date()
+  const range = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
+  const prevRange = { from: new Date(range.from.getTime() - 30 * 86_400_000), to: new Date(range.from.getTime() - 1) }
+  const [current, previous] = await Promise.all([
+    getClientPerformanceSummaryCore(admin, access.organizationId, contatoId, range),
+    getClientPerformanceSummaryCore(admin, access.organizationId, contatoId, prevRange),
+  ])
+  const allAlerts = computeClientAlerts(current, previous, null, lastAccountSyncDaysAgo)
+  const alerts = allAlerts.filter(a => a.title === 'Conta sem sincronizar')
+
+  return {
+    metaPixelConfigured,
+    lastCapiSendAt: capiLast?.created_at ?? null,
+    capiFailures7d: capiFailures || 0,
+    googleAdsConfigured,
+    activeTrackingLinks: (links || []).length,
+    lastClickAt: (lastClick as any)?.created_at ?? null,
+    lastAccountSyncAt: lastSyncedAt ?? null,
+    lastAccountSyncDaysAgo,
+    alerts,
   }
 }

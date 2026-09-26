@@ -275,3 +275,75 @@ export async function listClientConvertedJourneys(
       journey: journeysByContato.get(c.id) || [],
     }))
 }
+
+export type ClientTrackingHealth = {
+  metaPixelConfigured: boolean
+  lastCapiSendAt: string | null
+  capiFailures7d: number
+  googleAdsConfigured: boolean
+  activeTrackingLinks: number
+  lastClickAt: string | null
+  lastAccountSyncAt: string | null
+  lastAccountSyncDaysAgo: number | null
+  alerts: { severity: 'atencao' | 'critico'; title: string; reason: string }[]
+  recentFailures: { createdAt: string; eventName: string; error: string | null }[]
+}
+
+/** Mesmo bloco "Saúde do tracking" do Portal (#27/#61 2.4), com detalhe
+ *  extra que o portal não mostra: falhas recentes de CAPI com a mensagem
+ *  de erro completa (útil pra agência diagnosticar, não pro cliente). */
+export async function getClientTrackingHealth(orgSlug: string, contatoId: string): Promise<ClientTrackingHealth> {
+  const org = await requireAccess(orgSlug)
+  const supabase = createClient()
+
+  const [{ data: pipelines }, { data: capiLast }, { count: capiFailures }, { data: links }, { data: accounts }, { data: failures }] = await Promise.all([
+    supabase.from('pipelines').select('meta_pixel_id, google_ads_id').eq('organization_id', org.id),
+    supabase.from('capi_event_log').select('created_at, status').eq('organization_id', org.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('capi_event_log').select('id', { count: 'exact', head: true })
+      .eq('organization_id', org.id).eq('status', 'failed')
+      .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString()),
+    supabase.from('tracking_links').select('id').eq('organization_id', org.id).eq('contato_id', contatoId),
+    supabase.from('ad_accounts').select('updated_at, created_at').eq('organization_id', org.id).eq('contato_id', contatoId),
+    supabase.from('capi_event_log').select('created_at, event_name, error').eq('organization_id', org.id).eq('status', 'failed')
+      .order('created_at', { ascending: false }).limit(10),
+  ])
+
+  const linkIds = (links || []).map(l => l.id)
+  const { data: lastClick } = linkIds.length > 0
+    ? await supabase.from('tracking_clicks').select('created_at').in('link_id', linkIds).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    : { data: null }
+
+  const metaPixelConfigured = (pipelines || []).some(p => !!p.meta_pixel_id)
+  const googleAdsConfigured = (pipelines || []).some(p => !!p.google_ads_id)
+
+  const lastSyncedAt = (accounts || [])
+    .map(a => a.updated_at || a.created_at)
+    .filter(Boolean)
+    .sort()
+    .pop() as string | undefined
+  const lastAccountSyncDaysAgo = lastSyncedAt ? Math.floor((Date.now() - new Date(lastSyncedAt).getTime()) / 86_400_000) : null
+
+  const { computeClientAlerts } = await import('@/lib/trafego/alerts')
+  const now = new Date()
+  const range = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
+  const prevRange = { from: new Date(range.from.getTime() - 30 * 86_400_000), to: new Date(range.from.getTime() - 1) }
+  const [current, previous] = await Promise.all([
+    getClientPerformanceSummaryCore(supabase, org.id, contatoId, range),
+    getClientPerformanceSummaryCore(supabase, org.id, contatoId, prevRange),
+  ])
+  const allAlerts = computeClientAlerts(current, previous, null, lastAccountSyncDaysAgo)
+  const alerts = allAlerts.filter(a => a.title === 'Conta sem sincronizar')
+
+  return {
+    metaPixelConfigured,
+    lastCapiSendAt: capiLast?.created_at ?? null,
+    capiFailures7d: capiFailures || 0,
+    googleAdsConfigured,
+    activeTrackingLinks: linkIds.length,
+    lastClickAt: (lastClick as any)?.created_at ?? null,
+    lastAccountSyncAt: lastSyncedAt ?? null,
+    lastAccountSyncDaysAgo,
+    alerts,
+    recentFailures: (failures || []).map(f => ({ createdAt: f.created_at, eventName: f.event_name, error: f.error })),
+  }
+}
