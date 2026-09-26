@@ -143,7 +143,7 @@ DISCOVER → UNDERSTAND → CONTEXT SELECTION → PLAN → IMPLEMENT → TEST �
 | WhatsApp | `lib/whatsapp/meta-client.ts`, `app/api/webhooks/whatsapp/route.ts` |
 | Instagram/Social | `lib/social/*.ts`, `app/api/webhooks/instagram/route.ts` |
 | Althos Voice | `lib/voice/provider.ts`, `lib/voice/get-provider.ts`, `actions/voice*.ts` |
-| Tráfego/Ads | `lib/ads/index.ts`, `lib/ads/providers/{meta,google}.ts`, `lib/agent/tools/ads.ts`, `lib/agent/tools/modules-seguros-trafego.ts` |
+| Tráfego/Ads | `lib/ads/index.ts`, `lib/ads/providers/{meta,google}.ts`, `lib/agent/tools/ads.ts`, `lib/agent/tools/modules-seguros-trafego.ts`. Entitlement (#25, issue #22 3.7): toda action/tool/rota/cron novas verificam a vertical — actions via `checkMemberPermission(org.id, user.id, 'trafego')`, tools via `permissionKey: 'trafego'` + `capabilityKey: 'vertical.traffic'`, crons (`trafego-media-plan-reconcile`, `trafego-account-checks-cron`) filtram `organizations.niche = 'trafego'` antes de processar qualquer org. |
 | MCP (agentes externos) | `app/api/mcp/route.ts`, `lib/agent/tools/registry.ts`, `lib/agent/execute.ts` |
 | UI/Design System | `components/ui/`, o componente `features/` mais próximo do que já existe |
 | Nicho (viagens/clínicas/imóveis/seguros/tráfego) | `lib/niche.ts`, `lib/niche-modules.ts` + a área específica do nicho |
