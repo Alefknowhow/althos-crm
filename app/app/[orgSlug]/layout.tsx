@@ -22,6 +22,7 @@ import HeaderUserMenu from '@/components/features/HeaderUserMenu'
 import { getObjectSignedUrl } from '@/actions/storage'
 import CopilotDock from '@/components/features/dashboard/CopilotDock'
 import { CopilotProvider } from '@/components/features/CopilotProvider'
+import { CopilotTriggerButton } from '@/components/features/CopilotTriggerButton'
 import OrchestratorPalette from '@/components/features/OrchestratorPalette'
 import { canAccess, type Permissions, type MemberRole } from '@/lib/permissions'
 import { checkFeatureAccess } from '@/lib/plans/server'
@@ -152,13 +153,15 @@ export default async function OrgLayout({
               {/* Busca vira exclusiva do desktop — no mobile já tem entrada
                   própria na barra inferior (Consultar), manter no header
                   também duplicava a ação (pedido explícito: remover a
-                  duplicidade). Copiloto de IA removido do header (pedido
-                  explícito) — continua acessível pelo widget flutuante
-                  (CopilotDock) e pela barra inferior mobile. */}
+                  duplicidade). */}
               {/* Push toggle e alternância de tema saíram do header — moveram
                   pro menu do usuário (mesma consolidação do canvas do
                   /design, artboard 05: "só o sino permanece" no header). */}
               <AiCreditsBadge className="hidden sm:inline-flex" hideWhenZeroIncluded />
+              {/* Botão global do Althos AI (issue #68) — abre o mesmo painel
+                  (CopilotDock) do widget flutuante/atalho, só que fixo e
+                  visível na header em toda tela autenticada. */}
+              {canUseCopilot && <CopilotTriggerButton />}
               <div className="hidden md:block w-px h-[22px] bg-foreground/10 mx-0.5" />
               <NotificationBell orgSlug={params.orgSlug} orgId={org.id} userId={user.id} />
               <div className="hidden md:inline-flex">

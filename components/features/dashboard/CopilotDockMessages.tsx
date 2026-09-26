@@ -11,6 +11,7 @@ import { Pin } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { AIEmptyState } from '@/components/features/ai/AIEmptyState'
 import { AIMessageBubble } from '@/components/features/ai/AIMessageBubble'
+import { stripMarkdownTables } from '@/components/features/ai/markdownLite'
 
 const AnalyticsViewCard = dynamic(() => import('@/components/features/ai/AnalyticsViewCard'), {
   ssr: false,
@@ -50,11 +51,13 @@ export function CopilotDockMessages({
           onSelectSuggestion={onSend}
         />
       ) : (
-        messages.map(m => (
+        messages.map(m => {
+          const hasDataCard = !!m.tool_calls?.some(tc => tc.result?.view?.type !== 'none')
+          return (
           <AIMessageBubble
             key={m.id}
             role={m.role}
-            content={m.content}
+            content={hasDataCard ? stripMarkdownTables(m.content) : m.content}
             pending={streaming}
             toolCalls={m.tool_calls && m.tool_calls.length > 0 ? m.tool_calls.map((tc, i) => (
               <div key={i} className="space-y-1.5">
@@ -71,7 +74,8 @@ export function CopilotDockMessages({
               </div>
             )) : undefined}
           />
-        ))
+          )
+        })
       )}
       <div ref={endRef} />
     </div>

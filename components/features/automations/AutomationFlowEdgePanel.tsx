@@ -3,22 +3,23 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, GripHorizontal } from 'lucide-react'
+import { X, GitBranch } from 'lucide-react'
 import type { AutomationEdgeCondition } from '@/lib/automations/automation-traversal'
-import { useDraggablePosition } from './useDraggablePanel'
+import { INSPECTOR_PANEL_WIDTH } from './AutomationFlowNodeEditPanel'
 
 /**
- * Painel de edição de uma conexão selecionada — só faz sentido configurar
- * condição (palavra-chave/índice do botão) quando a conexão sai de um passo
- * "Aguardar Resposta" (é o único tipo de passo que o motor ramifica de
- * verdade — ver lib/automations/automation-traversal.ts). Saindo de
- * qualquer outro passo, a conexão é só estrutural (define a ordem); o
- * painel mostra apenas a opção de remover.
+ * Painel de edição de uma conexão selecionada, no mesmo slot fixo à
+ * esquerda do canvas usado pelo Inspector de nodes (AutomationFlowNodeEditPanel)
+ * — evita ter dois padrões de painel (docado vs. popup flutuante) na mesma
+ * tela. Só faz sentido configurar condição (palavra-chave/índice do botão)
+ * quando a conexão sai de um passo "Aguardar Resposta" (é o único tipo de
+ * passo que o motor ramifica de verdade — ver
+ * lib/automations/automation-traversal.ts). Saindo de qualquer outro
+ * passo, a conexão é só estrutural (define a ordem); o painel mostra
+ * apenas a opção de remover.
  */
-const PANEL_WIDTH = 440
-
 export default function AutomationFlowEdgePanel({
-  condition, sourceIsWaitForReply, sourceIsCondition, buttonOptions, onChange, onRemoveEdge, onClose, anchor,
+  condition, sourceIsWaitForReply, sourceIsCondition, buttonOptions, onChange, onRemoveEdge, onClose,
 }: {
   condition: AutomationEdgeCondition | undefined
   sourceIsWaitForReply: boolean
@@ -32,33 +33,26 @@ export default function AutomationFlowEdgePanel({
   onChange: (condition: AutomationEdgeCondition | undefined) => void
   onRemoveEdge: () => void
   onClose: () => void
-  anchor?: { x: number; y: number; containerWidth: number; containerHeight: number }
 }) {
   const isKeyword = condition?.type === 'keyword'
   const isButton = condition?.type === 'button'
 
-  const anchorStyle = anchor
-    ? {
-        top: Math.max(12, Math.min(anchor.y, anchor.containerHeight - 120)),
-        left: Math.max(12, Math.min(anchor.x + 16, anchor.containerWidth - PANEL_WIDTH - 12)),
-      }
-    : { top: 12, right: 12 }
-  const { style, onHeaderMouseDown } = useDraggablePosition('left' in anchorStyle ? anchorStyle as { top: number; left: number } : undefined)
-
   return (
-    <div
-      className="absolute z-10 rounded-md border bg-card shadow-lg p-3 space-y-3"
-      style={{ width: PANEL_WIDTH, ...(style ?? anchorStyle) }}
-    >
-      <div onMouseDown={onHeaderMouseDown} className="flex items-center justify-between cursor-move select-none -mx-3 -mt-3 px-3 pt-3 pb-1">
-        <div className="flex items-center gap-1.5">
-          <GripHorizontal className="w-3.5 h-3.5 text-muted-foreground/50" />
-          <p className="text-sm font-semibold">Conexão</p>
+    <div className="h-full shrink-0 border-r bg-card flex flex-col" style={{ width: INSPECTOR_PANEL_WIDTH }}>
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b shrink-0">
+        <span className="w-8 h-8 rounded-lg shrink-0 grid place-items-center bg-muted text-muted-foreground">
+          <GitBranch className="w-4 h-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold truncate">Conexão</p>
+          <p className="text-xs text-muted-foreground truncate">Regra de ramificação</p>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Fechar">
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar painel">
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
 
       {sourceIsCondition ? (
         <div className="space-y-2 pt-1">
@@ -150,9 +144,10 @@ export default function AutomationFlowEdgePanel({
           )}
         </>
       )}
+      </div>
 
-      <div className="pt-1 border-t">
-        <Button type="button" size="sm" variant="ghost" className="text-xs h-7 text-destructive hover:text-destructive w-full" onClick={onRemoveEdge}>
+      <div className="px-4 py-3 border-t shrink-0">
+        <Button type="button" size="sm" variant="ghost" className="text-xs h-8 text-destructive hover:text-destructive w-full" onClick={onRemoveEdge}>
           Remover conexão
         </Button>
       </div>
