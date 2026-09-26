@@ -16,6 +16,7 @@ import {
 } from '@/actions/contatos'
 import { listCreditsForContato, type TravelCreditRow } from '@/actions/travel-credits'
 import TaskDialog from '@/components/features/TaskDialog'
+import TaskCard from '@/components/features/TaskCard'
 import RequalifyButton from '@/components/features/ai/RequalifyButton'
 import CustomerDocuments from '@/components/features/customers/CustomerDocuments'
 import {
@@ -33,8 +34,7 @@ const TABS = [
   { key: 'visao-geral', label: 'Visão geral' },
   { key: 'atividades', label: 'Atividades' },
   { key: 'negocios', label: 'Negócios' },
-  { key: 'vendas', label: 'Vendas' },
-  { key: 'documentos', label: 'Documentos' },
+  { key: 'documentos', label: 'Arquivos' },
 ] as const
 
 export function DetailPanel({
@@ -215,6 +215,8 @@ export function DetailPanel({
           openingConversation={openingConversation}
           onOpenConversation={() => handleOpenConversation(c.id)}
           autoEditOpen={autoEditOpen}
+          onDelete={handleDelete}
+          deleting={deleting}
         />
 
         <div className="flex-1 min-w-0">
@@ -245,6 +247,8 @@ export function DetailPanel({
                   <VisaoKpi icon={Coins} label="Créditos de cancelamento" value={creditBalance > 0 ? fmtCurrency(creditBalance) : '—'} />
                 )}
               </div>
+
+              <NextActionCard orgSlug={orgSlug} tasks={selected.tasks} onNewTask={() => setNewTaskOpen(true)} />
 
               <div className="rounded-lg bg-card p-4">
                 <h3 className="text-sm font-bold mb-3">Linha do tempo</h3>
@@ -280,10 +284,14 @@ export function DetailPanel({
             />
           )}
 
-          {activeTab === 'negocios' && <NegociacoesTab deals={deals} />}
-
-          {activeTab === 'vendas' && (
-            <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
+          {activeTab === 'negocios' && (
+            <div className="space-y-5">
+              <NegociacoesTab deals={deals} />
+              <div>
+                <h3 className="text-sm font-bold mb-2">Vendas realizadas</h3>
+                <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
+              </div>
+            </div>
           )}
 
           {activeTab === 'documentos' && (
@@ -304,6 +312,47 @@ export function DetailPanel({
         open={newTaskOpen}
         onOpenChange={(v: boolean) => setNewTaskOpen(v)}
       />
+    </div>
+  )
+}
+
+function NextActionCard({ orgSlug, tasks, onNewTask }: { orgSlug: string; tasks: any[]; onNewTask: () => void }) {
+  const pending = tasks
+    .filter((t: any) => t.status !== 'done')
+    .sort((a: any, b: any) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+
+  if (pending.length === 0) {
+    return (
+      <div className="rounded-lg bg-card p-4">
+        <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+          <CalendarClock className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-bold uppercase tracking-wide">Próxima ação</span>
+        </div>
+        <p className="text-sm text-muted-foreground py-2">
+          Nenhuma tarefa pendente.{' '}
+          <button type="button" onClick={onNewTask} className="text-primary hover:underline">+ Nova tarefa</button>
+        </p>
+      </div>
+    )
+  }
+
+  const [next, ...rest] = pending
+
+  return (
+    <div className="rounded-lg bg-card p-4 space-y-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <CalendarClock className="w-3.5 h-3.5" />
+        <span className="text-[10px] font-bold uppercase tracking-wide">Próxima ação</span>
+      </div>
+      <TaskCard key={next.id} task={next} orgSlug={orgSlug} />
+      {rest.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Outras próximas tarefas</div>
+          <div className="space-y-1.5">
+            {rest.slice(0, 3).map((t: any) => <TaskCard key={t.id} task={t} orgSlug={orgSlug} />)}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

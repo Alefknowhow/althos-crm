@@ -2,28 +2,32 @@
 
 /**
  * Coluna esquerda do painel do cliente — perfil + ações rápidas + dados
- * pessoais, sempre visível (não é aba). Ajustes pedidos após o primeiro
- * corte: NPS/créditos saíram daqui (foram pra Visão geral), canal de
- * aquisição virou etiqueta simples ao lado do status, parentesco virou
- * uma linha de texto livre + botão (sem popup/select), campos em 2
- * colunas, e o lápis de editar fica no topo, perto do telefone.
+ * pessoais, sempre visível (não é aba). Redesenhada na issue #63: dados em
+ * grid de 2 colunas, endereço em seção própria, ações rápidas compactas
+ * (WhatsApp/Ligar/E-mail/Mais) e pessoas relacionadas com grau + idade,
+ * limitadas a 3 + "ver todos".
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Pencil, X, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Pencil, X, Plus, Mail, Trash2, Link2, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { WhatsAppGlyph } from '@/components/features/LeadCard'
 import { useCallDialer } from '@/components/features/voice/CallDialerModal'
 import CustomerProfileForm from '@/components/features/customers/CustomerProfileForm'
 import { addRelationship, deleteRelationship } from '@/actions/relationships'
-import { type RelationshipRow } from '@/lib/relationships'
+import { RELATIONSHIP_KINDS, RELATIONSHIP_LABELS, type RelationshipRow, type RelationshipKind } from '@/lib/relationships'
 import { CONTATO_STATUS_META, CONTATO_SOURCE_EDIT_OPTIONS, contatoSourceLabel } from '@/lib/contatos'
-import { fmtCurrency, fmtDate, STATUS_VALUES, type Selected } from './ContatosViewShared'
+import { fmtDate, STATUS_VALUES, type Selected } from './ContatosViewShared'
 import { AvatarUploader } from './ContatosViewWidgets'
 
 export function DetailSidebar({
@@ -31,6 +35,7 @@ export function DetailSidebar({
   savingStatus, onChangeStatus, savingSource, onChangeSource,
   tags, tagInput, setTagInput, onAddTag, onRemoveTag,
   openingConversation, onOpenConversation, autoEditOpen,
+  onDelete, deleting,
 }: {
   orgSlug:             string
   selected:            NonNullable<Selected>
@@ -49,16 +54,20 @@ export function DetailSidebar({
   openingConversation: boolean
   onOpenConversation:  () => void
   autoEditOpen?:       boolean
+  onDelete:            () => void
+  deleting:            boolean
 }) {
   const openDialer = useCallDialer()
   const [editOpen, setEditOpen] = useState(!!autoEditOpen)
   const meta = CONTATO_STATUS_META[(c.status as keyof typeof CONTATO_STATUS_META)] || null
 
-  const addressParts = [c.street, c.number, c.complement, c.district, c.city, c.state].filter(Boolean)
-  const address = addressParts.length ? addressParts.join(', ') : null
-  const monthsAsCustomer = c.became_customer_at
-    ? Math.max(0, Math.floor((Date.now() - new Date(c.became_customer_at).getTime()) / (30 * 86_400_000)))
-    : null
+  function copyLink() {
+    const url = `${window.location.origin}/app/${orgSlug}/contatos/${c.id}`
+    navigator.clipboard.writeText(url).then(
+      () => toast.success('Link copiado.'),
+      () => toast.error('Não foi possível copiar o link.'),
+    )
+  }
 
   return (
     <div className="w-full lg:w-[360px] xl:w-[400px] shrink-0 space-y-5">
@@ -96,81 +105,131 @@ export function DetailSidebar({
         </div>
       </div>
 
-      {/* WhatsApp / Ligar */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled={!c.phone || openingConversation}
-          onClick={onOpenConversation}
-          className="inline-flex items-center justify-center gap-2 h-9 rounded-full bg-secondary text-secondary-foreground text-[13px] font-semibold disabled:opacity-40"
-        >
-          <WhatsAppGlyph color="#25D366" /> WhatsApp
-        </button>
-        <button
-          type="button"
-          disabled={!c.phone}
-          onClick={() => c.phone && openDialer({ contatoId: c.id, name: c.name, phone: c.phone })}
-          className="inline-flex items-center justify-center gap-2 h-9 rounded-full bg-secondary text-secondary-foreground text-[13px] font-semibold disabled:opacity-40"
-        >
-          <WhatsAppGlyph color="#0a84ff" /> Ligar
-        </button>
-      </div>
+      {/* Ações rápidas — quadradas, compactas, com tooltip */}
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-center justify-center gap-2">
+          <QuickActionButton
+            tooltip={c.phone ? 'WhatsApp' : 'Telefone não informado'}
+            disabled={!c.phone || openingConversation}
+            onClick={onOpenConversation}
+          >
+            <WhatsAppGlyph color="#25D366" />
+          </QuickActionButton>
+          <QuickActionButton
+            tooltip={c.phone ? 'Ligar' : 'Telefone não informado'}
+            disabled={!c.phone}
+            onClick={() => c.phone && openDialer({ contatoId: c.id, name: c.name, phone: c.phone })}
+          >
+            <WhatsAppGlyph color="#0a84ff" />
+          </QuickActionButton>
+          <QuickActionButton
+            tooltip={c.email ? 'E-mail' : 'E-mail não informado'}
+            disabled={!c.email}
+            onClick={() => c.email && (window.location.href = `mailto:${c.email}`)}
+          >
+            <Mail className="w-[18px] h-[18px]" />
+          </QuickActionButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Mais ações"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-secondary-foreground hover:opacity-90 transition-opacity"
+              >
+                <MoreHorizontal className="w-[18px] h-[18px]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="w-3.5 h-3.5 mr-2" /> Editar contato
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyLink}>
+                <Link2 className="w-3.5 h-3.5 mr-2" /> Copiar link
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete} disabled={deleting}>
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir contato
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </TooltipProvider>
 
-      {/* Campos — 2 colunas, lápis de editar logo no topo (perto do telefone) */}
+      {/* Dados do contato — 2 colunas */}
       <div>
         <div className="flex items-center justify-between mb-2.5">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Dados do contato</div>
-          <button type="button" onClick={() => setEditOpen(true)} className="text-muted-foreground hover:text-foreground" aria-label="Editar dados">
-            <Pencil className="w-3.5 h-3.5" />
+          <button type="button" onClick={() => setEditOpen(true)} className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1" aria-label="Editar dados do contato">
+            <Pencil className="w-3 h-3" /> Editar
           </button>
         </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          <SidebarField label="Telefone" value={c.phone || '—'} />
-          <SidebarField label="E-mail" value={c.email || '—'} />
-          <SidebarField label="Valor em negociação" value={c.value_cents ? fmtCurrency(c.value_cents) : '—'} />
-          <SidebarField
-            label={monthsAsCustomer != null ? `Cliente há ${monthsAsCustomer} meses` : 'Desde'}
-            value={fmtDate(c.became_customer_at || c.created_at)}
-          />
-          <SidebarField label="Responsável" value={sellerName || '—'} />
-          <SidebarField label="CPF" value={c.cpf || '—'} />
-          <SidebarField label="Nascimento" value={c.date_of_birth ? fmtDate(c.date_of_birth) : '—'} />
-          <SidebarField label="Endereço" value={address || '—'} className="col-span-2" clamp />
+          <SidebarField label="Telefone" value={c.phone || 'Não informado'} />
+          <SidebarField label="E-mail" value={c.email || 'Não informado'} />
+          <SidebarField label="CPF" value={c.cpf || 'Não informado'} />
+          <SidebarField label="Nascimento" value={c.date_of_birth ? fmtDate(c.date_of_birth) : 'Não informado'} />
+          <SidebarField label="Responsável" value={sellerName || 'Não informado'} />
+          <SidebarField label="Criado em" value={fmtDate(c.created_at)} />
           {isTravel && (
             <>
-              <SidebarField label="Passaporte" value={c.passport_number || '—'} />
-              <SidebarField label="Validade passaporte" value={c.passport_expiry ? fmtDate(c.passport_expiry) : '—'} />
+              <SidebarField label="Passaporte" value={c.passport_number || 'Não informado'} />
+              <SidebarField label="Validade passaporte" value={c.passport_expiry ? fmtDate(c.passport_expiry) : 'Não informado'} />
               <SidebarField label="Visto (EUA)" value={c.has_us_visa ? 'Possui' : 'Não possui'} className="col-span-2" />
             </>
           )}
         </div>
       </div>
 
-      {/* Tags — acima de Parentesco */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {tags.map(t => (
-          <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
-            {t}
-            <button type="button" onClick={() => onRemoveTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
-              <X className="w-3 h-3" />
-            </button>
-          </Badge>
-        ))}
-        <Input
-          value={tagInput}
-          onChange={e => setTagInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAddTag() } }}
-          onBlur={onAddTag}
-          placeholder="+ tag"
-          className="h-6 w-20 text-[11px] px-2 rounded-full bg-background"
-        />
+      {/* Endereço — seção própria, 2 colunas */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Endereço</div>
+          <button type="button" onClick={() => setEditOpen(true)} className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1" aria-label="Editar endereço">
+            <Pencil className="w-3 h-3" /> Editar
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <SidebarField label="CEP" value={c.postal_code || 'Não informado'} />
+          <SidebarField label="Bairro" value={c.district || 'Não informado'} />
+          <SidebarField label="Cidade / UF" value={c.city ? `${c.city}${c.state ? ` / ${c.state}` : ''}` : 'Não informado'} />
+          <SidebarField label="Complemento" value={c.complement || 'Não informado'} />
+          <SidebarField
+            label="Rua / número"
+            value={c.street ? `${c.street}${c.number ? `, ${c.number}` : ''}` : 'Não informado'}
+            className="col-span-2"
+            clamp
+          />
+        </div>
       </div>
 
-      {/* Parentes — texto livre, uma linha por pessoa */}
-      <RelationshipsSimple orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
+      {/* Tags */}
+      <div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Tags</div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {tags.map(t => (
+            <Badge key={t} variant="secondary" className="text-[11px] gap-1 pr-1">
+              {t}
+              <button type="button" onClick={() => onRemoveTag(t)} aria-label={`Remover tag ${t}`} className="hover:text-destructive">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+          <Input
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAddTag() } }}
+            onBlur={onAddTag}
+            placeholder="+ tag"
+            className="h-6 w-20 text-[11px] px-2 rounded-full bg-background"
+          />
+        </div>
+      </div>
+
+      {/* Pessoas relacionadas */}
+      <RelatedPeople orgSlug={orgSlug} contatoId={c.id} initial={selected.relationships} />
 
       {/* Edição completa (CPF/RG/passaporte/endereço/contatos) — modal,
-          aberto pelo lápis acima. */}
+          aberto pelo "Editar" das seções acima ou pelo menu "Mais ações". */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <CustomerProfileForm
@@ -187,6 +246,26 @@ export function DetailSidebar({
   )
 }
 
+function QuickActionButton({
+  tooltip, disabled, onClick, children,
+}: { tooltip: string; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onClick}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-secondary text-secondary-foreground disabled:opacity-40 hover:opacity-90 transition-opacity"
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function SidebarField({ label, value, className, clamp }: { label: string; value: string; className?: string; clamp?: boolean }) {
   return (
     <div className={`min-w-0 ${className || ''}`}>
@@ -196,39 +275,27 @@ function SidebarField({ label, value, className, clamp }: { label: string; value
   )
 }
 
-/** Parentesco simplificado — texto livre, sem grau/tipo. Aperta "+" (ou
- *  Enter) pra salvar e a linha vira uma informação de texto, igual às
- *  outras (endereço, etc). Sempre grava kind:'outro' — o campo não existe
- *  mais na UI, só no schema (mantido pra não quebrar o histórico já salvo
- *  com um grau específico). */
-function RelationshipsSimple({ orgSlug, contatoId, initial }: { orgSlug: string; contatoId: string; initial: RelationshipRow[] }) {
+function ageFromBirthDate(d: string | null): number | null {
+  if (!d) return null
+  const birth = new Date(d)
+  if (Number.isNaN(birth.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - birth.getFullYear()
+  const m = now.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+  return age
+}
+
+/** Pessoas relacionadas — grau de parentesco + idade (quando houver data de
+ *  nascimento), no formato "Esposa · 34 anos". Mostra só as 3 primeiras na
+ *  sidebar; o resto fica atrás de "Ver todos" (drawer), sem aumentar a
+ *  altura da página. */
+function RelatedPeople({ orgSlug, contatoId, initial }: { orgSlug: string; contatoId: string; initial: RelationshipRow[] }) {
   const router = useRouter()
   const [items, setItems] = useState<RelationshipRow[]>(initial)
-  const [text, setText] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [seeAllOpen, setSeeAllOpen] = useState(false)
 
-  async function add() {
-    const value = text.trim()
-    if (!value || saving) return
-    setSaving(true)
-    const res = await addRelationship(orgSlug, { contatoId, kind: 'outro', relatedName: value })
-    setSaving(false)
-    if (!res.ok) { toast.error(res.error); return }
-    setText('')
-    // A action não devolve a linha criada — adiciona otimista (id
-    // temporário) e revalida em segundo plano pra reconciliar com o servidor.
-    setItems(prev => [...prev, {
-      id: `tmp-${Date.now()}`,
-      kind: 'outro',
-      note: null,
-      related_contato_id: null,
-      related_name: value,
-      related_cpf: null,
-      related_birth_date: null,
-      created_at: new Date().toISOString(),
-    }])
-    router.refresh()
-  }
+  const visible = useMemo(() => items.slice(0, 3), [items])
 
   async function remove(id: string) {
     setItems(prev => prev.filter(r => r.id !== id))
@@ -237,42 +304,163 @@ function RelationshipsSimple({ orgSlug, contatoId, initial }: { orgSlug: string;
     else router.refresh()
   }
 
+  function onCreated(row: RelationshipRow) {
+    setItems(prev => [...prev, row])
+    router.refresh()
+  }
+
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Parentes</div>
-      <div className="space-y-1.5 mb-2">
-        {items.map(r => (
-          <div key={r.id} className="group flex items-center justify-between gap-2 text-sm">
-            <span className="truncate">{r.related_name}</span>
-            <button
-              type="button"
-              onClick={() => remove(r.id)}
-              className="shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-              aria-label="Remover"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <Input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
-          placeholder="Nome · data de nascimento · CPF..."
-          className="h-8 text-sm flex-1"
-        />
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pessoas relacionadas</div>
         <button
           type="button"
-          onClick={add}
-          disabled={saving || !text.trim()}
-          className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-secondary text-secondary-foreground disabled:opacity-40"
-          aria-label="Adicionar parente"
+          onClick={() => setSeeAllOpen(true)}
+          className="w-6 h-6 grid place-items-center rounded-full bg-secondary text-secondary-foreground"
+          aria-label="Adicionar pessoa relacionada"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Nenhuma pessoa relacionada.{' '}
+          <button type="button" onClick={() => setSeeAllOpen(true)} className="text-primary hover:underline">
+            + Adicionar pessoa
+          </button>
+        </p>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {visible.map(r => (
+              <RelatedPersonRow key={r.id} r={r} onRemove={() => remove(r.id)} />
+            ))}
+          </div>
+          {items.length > 3 && (
+            <button type="button" onClick={() => setSeeAllOpen(true)} className="text-xs text-primary hover:underline mt-2">
+              Ver todos os {items.length} relacionados →
+            </button>
+          )}
+        </>
+      )}
+
+      <RelatedPeopleDialog
+        open={seeAllOpen}
+        onOpenChange={setSeeAllOpen}
+        orgSlug={orgSlug}
+        contatoId={contatoId}
+        items={items}
+        onCreated={onCreated}
+        onRemove={remove}
+      />
     </div>
+  )
+}
+
+function RelatedPersonRow({ r, onRemove }: { r: RelationshipRow; onRemove: () => void }) {
+  const age = ageFromBirthDate(r.related_birth_date)
+  const kindLabel = RELATIONSHIP_LABELS[r.kind] || r.kind
+  return (
+    <div className="group flex items-center justify-between gap-2 text-sm">
+      <div className="min-w-0">
+        <div className="font-medium truncate">{r.related_name}</div>
+        <div className="text-xs text-muted-foreground truncate">
+          {kindLabel}{age != null ? ` · ${age} anos` : ''}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+        aria-label="Remover"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </div>
+  )
+}
+
+function RelatedPeopleDialog({
+  open, onOpenChange, orgSlug, contatoId, items, onCreated, onRemove,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  orgSlug: string
+  contatoId: string
+  items: RelationshipRow[]
+  onCreated: (row: RelationshipRow) => void
+  onRemove: (id: string) => void
+}) {
+  const [kind, setKind] = useState<RelationshipKind | ''>('')
+  const [name, setName] = useState('')
+  const [birthDate, setBirthDate] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function add() {
+    if (!kind) { toast.error('Selecione o grau de parentesco.'); return }
+    if (!name.trim()) { toast.error('Informe o nome.'); return }
+    setSaving(true)
+    const res = await addRelationship(orgSlug, {
+      contatoId, kind, relatedName: name.trim(), relatedBirthDate: birthDate || null,
+    })
+    setSaving(false)
+    if (!res.ok) { toast.error(res.error); return }
+    onCreated({
+      id: `tmp-${Date.now()}`,
+      kind,
+      note: null,
+      related_contato_id: null,
+      related_name: name.trim(),
+      related_cpf: null,
+      related_birth_date: birthDate || null,
+      created_at: new Date().toISOString(),
+    })
+    setKind(''); setName(''); setBirthDate('')
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Pessoas relacionadas</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-end gap-2 rounded-lg border p-3 bg-muted/20">
+          <div className="flex-1 min-w-0 space-y-1">
+            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Grau</label>
+            <Select value={kind} onValueChange={v => setKind(v as RelationshipKind)}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Escolher..." /></SelectTrigger>
+              <SelectContent>
+                {RELATIONSHIP_KINDS.map(k => (
+                  <SelectItem key={k} value={k}>{RELATIONSHIP_LABELS[k]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-[1.5] min-w-0 space-y-1">
+            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Nome</label>
+            <Input value={name} onChange={e => setName(e.target.value)} className="h-9" />
+          </div>
+          <div className="w-[130px] space-y-1">
+            <label className="text-[10px] uppercase text-muted-foreground font-semibold">Nascimento</label>
+            <Input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="h-9" />
+          </div>
+          <Button size="sm" className="shrink-0" onClick={add} disabled={saving}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pessoa relacionada ainda.</p>
+          ) : items.map(r => (
+            <div key={r.id} className="flex items-center justify-between gap-2 py-2 border-b last:border-0">
+              <RelatedPersonRow r={r} onRemove={() => onRemove(r.id)} />
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
