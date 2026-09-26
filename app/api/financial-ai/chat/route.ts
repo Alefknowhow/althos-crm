@@ -82,6 +82,25 @@ export async function POST(req: NextRequest) {
     .eq('organization_id', org.id)
     .order('created_at', { ascending: true })
 
+  // Nomeia a conversa pela primeira mensagem — mesma lógica de
+  // actions/ai_insights.ts::sendInsightMessage.
+  if (!prior || prior.length === 0) {
+    const { data: session } = await supabase
+      .from('ai_financial_sessions')
+      .select('title')
+      .eq('id', sessionId)
+      .eq('organization_id', org.id)
+      .maybeSingle()
+    if (!session?.title || session.title === 'Nova conversa') {
+      const autoTitle = userMessage.length > 60 ? `${userMessage.slice(0, 60).trim()}…` : userMessage
+      await supabase
+        .from('ai_financial_sessions')
+        .update({ title: autoTitle })
+        .eq('id', sessionId)
+        .eq('organization_id', org.id)
+    }
+  }
+
   await supabase.from('ai_financial_messages').insert({
     session_id: sessionId,
     organization_id: org.id,

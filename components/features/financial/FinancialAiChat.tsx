@@ -4,12 +4,17 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Coins, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
-import { getFinancialAiInit, confirmFinancialAiEntry } from '@/actions/financial-ai'
+import { Coins, X, Loader2, Check, Ban, Plus, PanelLeft } from 'lucide-react'
+import {
+  getFinancialAiInit, confirmFinancialAiEntry,
+  listFinancialAiSessions, createFinancialAiSession, deleteFinancialAiSession,
+  renameFinancialAiSession, listFinancialAiMessages,
+} from '@/actions/financial-ai'
 import { AIComposer } from '@/components/features/ai/AIComposer'
 import { AIEmptyState } from '@/components/features/ai/AIEmptyState'
-import { renderMarkdownLite, stripMarkdownTables } from '@/components/features/ai/markdownLite'
+import { AIMessageBubble } from '@/components/features/ai/AIMessageBubble'
+import { AIChatSidebar } from '@/components/features/ai/AIChatSidebar'
+import { stripMarkdownTables } from '@/components/features/ai/markdownLite'
 
 type FinancialAiView =
   | { type: 'kpis'; items: Array<{ label: string; value: string }> }
@@ -19,6 +24,7 @@ type FinancialAiView =
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: FinancialAiView } }
 type Message = { id: string; role: 'user' | 'assistant' | 'system'; content: string; tool_calls: ToolCall[] | null }
+type SessionSummary = { id: string; title: string | null; created_at: string; updated_at: string }
 
 const SUGGESTED_PROMPTS = [
   'Como está o financeiro esse mês?',
@@ -110,6 +116,12 @@ function ViewCard({ view, orgSlug }: { view: FinancialAiView; orgSlug: string })
   return null
 }
 
+/**
+ * IA Financeira — mesmo formato de modal centralizado com histórico lateral
+ * do Althos AI (CopilotDock.tsx), issue #68. Sessões/mensagens próprias
+ * (ai_financial_sessions/ai_financial_messages), streaming via
+ * app/api/financial-ai/chat/route.ts.
+ */
 export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
   const [open, setOpen] = useState(false)
   const [initialized, setInitialized] = useState(false)
@@ -119,17 +131,22 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
   const [credits, setCredits] = useState<number | null>(null)
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const [, startTransition] = useTransition()
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open || initialized) return
     startTransition(async () => {
-      const init = await getFinancialAiInit(orgSlug)
+      const [init, sessionList] = await Promise.all([getFinancialAiInit(orgSlug), listFinancialAiSessions(orgSlug)])
       setEnabled(init.enabled)
       setSessionId(init.sessionId)
       setMessages(init.messages as Message[])
       setCredits(init.creditsRemaining)
+      setSessions(sessionList as SessionSummary[])
       setInitialized(true)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +155,66 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streaming])
+
+  useEffect(() => {
+    if (window.innerWidth < 640) setSidebarOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  async function refreshSessions() {
+    const list = await listFinancialAiSessions(orgSlug)
+    setSessions(list as SessionSummary[])
+  }
+
+  async function switchToSession(id: string) {
+    if (streaming || id === sessionId) return
+    setSessionId(id)
+    const msgs = await listFinancialAiMessages(orgSlug, id)
+    setMessages(msgs as Message[])
+  }
+
+  async function handleNewConversation() {
+    if (streaming) return
+    const res = await createFinancialAiSession(orgSlug)
+    if (!res.ok) { toast.error('Não foi possível criar conversa'); return }
+    setSessionId(res.sessionId)
+    setMessages([])
+    refreshSessions()
+  }
+
+  async function handleDeleteSession(id: string) {
+    const res = await deleteFinancialAiSession(orgSlug, id)
+    if (!res.ok) { toast.error('Não foi possível excluir', { description: res.error }); return }
+    const remaining = sessions.filter(s => s.id !== id)
+    setSessions(remaining)
+    if (id === sessionId) {
+      if (remaining.length > 0) switchToSession(remaining[0].id)
+      else handleNewConversation()
+    }
+  }
+
+  function startRename(s: SessionSummary) {
+    setRenamingId(s.id)
+    setRenameValue(s.title || 'Nova conversa')
+  }
+
+  async function confirmRename() {
+    if (!renamingId) return
+    const id = renamingId
+    const title = renameValue
+    setRenamingId(null)
+    const res = await renameFinancialAiSession(orgSlug, id, title)
+    if (!res.ok) { toast.error('Não foi possível renomear', { description: res.error }); return }
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: title.trim() } : s))
+  }
 
   async function send(text: string) {
     const message = text.trim()
@@ -188,6 +265,7 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
         }
       }
       setCredits(c => (c != null ? Math.max(0, c - 2) : c))
+      refreshSessions()
     } catch (e: any) {
       toast.error('Não foi possível enviar', { description: e?.message })
       setMessages(prev => prev.filter(m => m.id !== draftId))
@@ -210,98 +288,113 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-1/2 sm:min-w-[420px] sm:max-w-3xl bg-background border-l flex flex-col">
-          <div className="h-16 border-b px-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold leading-tight">IA Financeira</p>
-                {credits != null && (
-                  <p className="text-[10px] text-muted-foreground leading-tight">{credits} créditos restantes</p>
-                )}
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="Fechar IA financeira">
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+        <div className="fixed inset-0 z-40 flex items-center justify-center sm:p-6 md:p-10">
+          <div
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] animate-in fade-in duration-200 hidden sm:block"
+            onClick={() => setOpen(false)}
+          />
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {!enabled ? (
-              <div className="text-sm text-muted-foreground text-center py-8">
-                A IA financeira não está disponível no seu plano.
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="space-y-3">
-                <AIEmptyState
-                  description="Pergunte sobre o financeiro ou peça pra registrar um lançamento:"
-                  suggestions={SUGGESTED_PROMPTS}
-                  onSelectSuggestion={send}
-                />
-                <Badge variant="outline" className="text-[10px]">A IA nunca grava dados sem sua confirmação</Badge>
-              </div>
-            ) : (
-              messages.map(m => {
-                const hasDataCard = !!m.tool_calls?.some(tc => tc.result?.view && tc.result.view.type !== 'none')
-                const displayContent = hasDataCard ? stripMarkdownTables(m.content) : m.content
-                return (
-                <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div
-                    className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center ${
-                      m.role === 'user' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-primary/10 text-primary'
-                    }`}
-                  >
-                    {m.role === 'user' ? <UserIcon className="w-3.5 h-3.5" /> : <Coins className="w-3.5 h-3.5" />}
+          <div className="relative z-10 w-full h-full sm:h-[88vh] max-w-6xl bg-background sm:rounded-[28px] border-0 sm:border sm:border-border/60 shadow-none sm:shadow-2xl overflow-hidden flex animate-in fade-in sm:zoom-in-[0.97] slide-in-from-bottom-3 duration-300 ease-out">
+            <AIChatSidebar
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+              sessions={sessions}
+              sessionId={sessionId}
+              renamingId={renamingId}
+              renameValue={renameValue}
+              setRenameValue={setRenameValue}
+              onNewConversation={handleNewConversation}
+              onSwitchSession={switchToSession}
+              onStartRename={startRename}
+              onConfirmRename={confirmRename}
+              onCancelRename={() => setRenamingId(null)}
+              onDeleteSession={handleDeleteSession}
+            />
+
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="h-16 shrink-0 border-b px-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={() => setSidebarOpen(v => !v)} title="Mostrar/ocultar histórico">
+                    <PanelLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Coins className="w-4 h-4" />
                   </div>
-                  <div className={`${m.role === 'user' ? 'max-w-[80%]' : 'max-w-[88%] flex-1'} space-y-2`}>
-                    {m.tool_calls && m.tool_calls.length > 0 && m.tool_calls.map((tc, i) => (
-                      tc.result?.view && tc.result.view.type !== 'none' ? (
-                        <ViewCard key={i} view={tc.result.view} orgSlug={orgSlug} />
-                      ) : null
-                    ))}
-                    {displayContent && (
-                      <div
-                        className={`rounded-none px-3.5 py-2 text-sm whitespace-pre-wrap ${
-                          m.role === 'user' ? 'bg-primary text-primary-foreground inline-block' : 'bg-muted'
-                        }`}
-                      >
-                        {renderMarkdownLite(displayContent)}
-                      </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-tight tracking-tight">IA Financeira</p>
+                    {credits != null && (
+                      <p className="text-[11px] text-muted-foreground leading-tight">{credits} créditos restantes</p>
                     )}
                   </div>
                 </div>
-                )
-              })
-            )}
-            {streaming && messages[messages.length - 1]?.content === '' && (
-              <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Coins className="w-3.5 h-3.5" />
-                </div>
-                <div className="bg-muted rounded-none px-3.5 py-2 text-sm flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="text-muted-foreground text-xs">consultando os dados...</span>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={handleNewConversation} title="Nova conversa" aria-label="Nova conversa">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="rounded-lg h-9 w-9 sm:h-9 sm:w-9 max-sm:h-12 max-sm:w-12" onClick={() => setOpen(false)} aria-label="Fechar IA financeira">
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
-            )}
-            <div ref={endRef} />
-          </div>
 
-          {enabled && (
-            <div className="border-t bg-card p-3 shrink-0">
-              <AIComposer
-                orgSlug={orgSlug}
-                value={input}
-                onChange={setInput}
-                onSend={() => send(input)}
-                disabled={streaming || !sessionId}
-                sending={streaming}
-                placeholder="Pergunte ou peça pra lançar algo..."
-              />
+              <div className="flex-1 overflow-y-auto">
+                <div className="max-w-[720px] mx-auto px-6 sm:px-8 py-8 space-y-7">
+                  {!enabled ? (
+                    <div className="text-sm text-muted-foreground text-center py-8">
+                      A IA financeira não está disponível no seu plano.
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <AIEmptyState
+                      icon={<div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3"><Coins className="w-5 h-5" /></div>}
+                      description="Pergunte sobre o financeiro ou peça pra registrar um lançamento — a IA nunca grava dados sem sua confirmação."
+                      suggestions={SUGGESTED_PROMPTS}
+                      onSelectSuggestion={send}
+                    />
+                  ) : (
+                    messages.map(m => {
+                      const hasDataCard = !!m.tool_calls?.some(tc => tc.result?.view && tc.result.view.type !== 'none')
+                      const displayContent = hasDataCard ? stripMarkdownTables(m.content) : m.content
+                      return (
+                        <AIMessageBubble
+                          key={m.id}
+                          role={m.role}
+                          content={displayContent}
+                          pending={streaming}
+                          toolCalls={m.tool_calls && m.tool_calls.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {m.tool_calls.map((tc, i) => (
+                                tc.result?.view && tc.result.view.type !== 'none' ? (
+                                  <ViewCard key={i} view={tc.result.view} orgSlug={orgSlug} />
+                                ) : null
+                              ))}
+                            </div>
+                          ) : undefined}
+                        />
+                      )
+                    })
+                  )}
+                  <div ref={endRef} />
+                </div>
+              </div>
+
+              {enabled && (
+                <div className="shrink-0 px-6 sm:px-8 pb-6 pt-2">
+                  <div className="max-w-[720px] mx-auto">
+                    <AIComposer
+                      orgSlug={orgSlug}
+                      value={input}
+                      onChange={setInput}
+                      onSend={() => send(input)}
+                      disabled={streaming || !sessionId}
+                      sending={streaming}
+                      placeholder="Pergunte ou peça pra lançar algo..."
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </>

@@ -1,8 +1,11 @@
 'use client'
 
 /**
- * Conversation-history sidebar for CopilotDock. Prop-driven, split out
- * of CopilotDock.tsx.
+ * Sidebar de histórico de conversas compartilhada por todos os chats de IA
+ * do CRM (issue #68) — nova conversa, busca visual por título, renomear,
+ * excluir. Usado por CopilotDock (Althos AI) e FinancialAiChat (IA
+ * Financeira); qualquer novo chat com sessões persistidas deve usar este
+ * componente em vez de reimplementar a lista.
  */
 
 import { Button } from '@/components/ui/button'
@@ -19,7 +22,7 @@ function formatSessionDate(iso: string) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-export function CopilotDockSidebar({
+export function AIChatSidebar({
   sidebarOpen, setSidebarOpen, sessions, sessionId, renamingId, renameValue, setRenameValue,
   onNewConversation, onSwitchSession, onStartRename, onConfirmRename, onCancelRename, onDeleteSession,
 }: {
