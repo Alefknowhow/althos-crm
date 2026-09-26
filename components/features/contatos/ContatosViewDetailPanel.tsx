@@ -27,8 +27,8 @@ import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
 import { DetailSidebar } from './ContatosViewDetailSidebar'
 import { OverviewTab } from './ContatosViewDetailOverviewTab'
 import { ActivitiesTab } from './ContatosViewDetailActivitiesTab'
-import { NegociacoesTab, ComprasTab } from './ContatosViewDetailHistoryTabs'
-import { ActivityRow } from './ContatosViewDetailHelpers'
+import { NegociacoesTab } from './ContatosViewDetailHistoryTabs'
+import { ActivityRow, DealCard } from './ContatosViewDetailHelpers'
 
 const TABS = [
   { key: 'visao-geral', label: 'Visão geral' },
@@ -248,13 +248,27 @@ export function DetailPanel({
                 )}
               </div>
 
-              <NextActionCard orgSlug={orgSlug} tasks={selected.tasks} onNewTask={() => setNewTaskOpen(true)} />
+              <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+                <div className="xl:col-span-3">
+                  <NextActionCard orgSlug={orgSlug} tasks={selected.tasks} onNewTask={() => setNewTaskOpen(true)} />
+                </div>
+                <div className="xl:col-span-2">
+                  <NegociosAtivosCard deals={deals} members={members} onShowAll={() => setActiveTab('negocios')} />
+                </div>
+              </div>
 
               <div className="rounded-lg bg-card p-4">
-                <h3 className="text-sm font-bold mb-3">Linha do tempo</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold">Atividade recente</h3>
+                  {selected.activities.length > 5 && (
+                    <button type="button" className="text-xs text-primary hover:underline" onClick={() => setActiveTab('atividades')}>
+                      Ver todas as atividades →
+                    </button>
+                  )}
+                </div>
                 {selected.activities.length > 0 ? (
                   <div className="space-y-4">
-                    {selected.activities.slice(0, 8).map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
+                    {selected.activities.slice(0, 5).map((act: any) => <ActivityRow key={act.id} act={act} fmtCurrency={fmtCurrency} />)}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-6">Nenhuma atividade registrada.</p>
@@ -269,9 +283,7 @@ export function DetailPanel({
                 isRealEstate={isRealEstate}
                 properties={properties}
                 members={members}
-                deals={deals}
                 credits={credits}
-                onShowAllDeals={() => setActiveTab('negocios')}
               />
             </div>
           )}
@@ -285,13 +297,7 @@ export function DetailPanel({
           )}
 
           {activeTab === 'negocios' && (
-            <div className="space-y-5">
-              <NegociacoesTab deals={deals} />
-              <div>
-                <h3 className="text-sm font-bold mb-2">Vendas realizadas</h3>
-                <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
-              </div>
-            </div>
+            <NegociacoesTab deals={deals} members={members} orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
           )}
 
           {activeTab === 'documentos' && (
@@ -300,6 +306,7 @@ export function DetailPanel({
               leadId={c.id}
               profileId={c.id}
               initialDocuments={selected.documents}
+              members={members}
             />
           )}
         </div>
@@ -312,6 +319,33 @@ export function DetailPanel({
         open={newTaskOpen}
         onOpenChange={(v: boolean) => setNewTaskOpen(v)}
       />
+    </div>
+  )
+}
+
+function NegociosAtivosCard({
+  deals, members, onShowAll,
+}: { deals: ContatoDeal[]; members: { id: string; name: string }[]; onShowAll: () => void }) {
+  const open = deals.filter(d => d.status !== 'won' && d.status !== 'lost')
+
+  return (
+    <div className="rounded-lg bg-card p-4 h-full">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold">Negócios ativos ({open.length})</h3>
+        {deals.length > 0 && (
+          <button type="button" className="text-xs text-primary hover:underline" onClick={onShowAll}>Ver todos →</button>
+        )}
+      </div>
+      {open.length > 0 ? (
+        <div className="space-y-2">
+          {open.slice(0, 3).map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} members={members} />)}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-6">
+          Nenhum negócio ativo.{' '}
+          <button type="button" onClick={onShowAll} className="text-primary hover:underline">+ Criar negócio</button>
+        </p>
+      )}
     </div>
   )
 }

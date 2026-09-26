@@ -10,7 +10,8 @@ import {
   FileImage,
   Trash2,
   Loader2,
-  Lock,
+  Download,
+  Eye,
 } from 'lucide-react'
 import {
   uploadCustomerDocument,
@@ -29,9 +30,28 @@ export type CustomerDoc = {
   file_name: string
   file_size_bytes: number | null
   mime_type: string | null
+  uploaded_by?: string | null
   created_at: string
 }
 type Doc = CustomerDoc
+
+/** Categorias de filtro da aba Arquivos — cada `kind` de documento cai em
+ *  uma delas; imagem é decidida pelo mime type, não pelo kind. */
+const FILE_CATEGORIES = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'documentos', label: 'Documentos' },
+  { key: 'contratos', label: 'Contratos' },
+  { key: 'comprovantes', label: 'Comprovantes' },
+  { key: 'imagens', label: 'Imagens' },
+] as const
+type FileCategory = typeof FILE_CATEGORIES[number]['key']
+
+function docCategory(doc: Doc): Exclude<FileCategory, 'todos'> {
+  if ((doc.mime_type || '').startsWith('image/') && !['cpf', 'rg_front', 'rg_back', 'cnh', 'passport', 'visa'].includes(doc.kind)) return 'imagens'
+  if (doc.kind === 'contract') return 'contratos'
+  if (doc.kind === 'address_proof') return 'comprovantes'
+  return 'documentos'
+}
 
 const KIND_LABEL: Record<string, string> = {
   cpf: 'CPF',
@@ -84,11 +104,15 @@ export default function CustomerDocuments({
   leadId: _leadId,
   profileId,
   initialDocuments,
+  members,
 }: {
   orgSlug: string
   leadId: string
   profileId: string | null
   initialDocuments: Doc[]
+  /** Nomes pra resolver `uploaded_by` na coluna "autor" — opcional, alguns
+   *  chamadores (formulário de edição) não têm essa lista à mão. */
+  members?: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -98,8 +122,13 @@ export default function CustomerDocuments({
   const [previewUrl, setPreviewUrl] = useState<{ url: string; mime: string } | null>(null)
   const [docToDelete, setDocToDelete] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [category, setCategory] = useState<FileCategory>('todos')
   const kindRef = useRef(kind)
   kindRef.current = kind
+
+  const filteredDocuments = category === 'todos'
+    ? initialDocuments
+    : initialDocuments.filter(d => docCategory(d) === category)
 
   // If no profile exists yet (operator hasn't saved address fields), show a
   // gentle prompt — Storage upload requires the profile id as part of the
@@ -143,6 +172,18 @@ export default function CustomerDocuments({
     setPreviewUrl({ url: res.url, mime: doc.mime_type || 'image/png' })
   }
 
+  async function handleDownload(doc: Doc) {
+    const res = await getDocumentSignedUrl(orgSlug, doc.id)
+    if (!res.ok) {
+      toast.error(res.error || 'Não foi possível baixar')
+      return
+    }
+    const a = document.createElement('a')
+    a.href = res.url
+    a.download = doc.file_name
+    a.click()
+  }
+
   // Close preview on ESC for keyboard users.
   useEffect(() => {
     if (!previewUrl) return
@@ -172,16 +213,59 @@ export default function CustomerDocuments({
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-medium text-foreground flex items-center gap-1">
-          Arquivos anexados <Lock className="w-3 h-3 text-muted-foreground" />
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          Privados — links de visualização expiram em 5 min.
-        </span>
+      {/* Header compacto — filtros por categoria + envio, sem área grande de drop */}
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div className="flex items-center gap-1 p-1 rounded-full bg-muted w-fit overflow-x-auto max-w-full">
+          {FILE_CATEGORIES.map(cat => (
+            <button
+              key={cat.key}
+              type="button"
+              onClick={() => setCategory(cat.key)}
+              className={`shrink-0 h-7 px-3 rounded-full text-xs font-semibold transition-colors ${
+                category === cat.key ? 'bg-card shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {!profileMissing && (
+          <div className="flex items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-input bg-input/25 px-2 text-xs dark:bg-black/40 dark:border-white/10"
+              value={kind}
+              onChange={e => setKind(e.target.value)}
+              disabled={uploading}
+            >
+              {KIND_OPTIONS.map(k => (
+                <option key={k} value={k}>{KIND_LABEL[k]}</option>
+              ))}
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,application/pdf"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) handleFile(f)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+            />
+            <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} size="sm">
+              {uploading ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando...</>
+              ) : (
+                <><Upload className="w-3.5 h-3.5 mr-1.5" /> Enviar arquivo</>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
+
       <div
-        className={`space-y-4 rounded-lg transition-colors ${dragging ? 'bg-primary/5 ring-2 ring-primary/40 ring-inset' : ''}`}
+        className={`rounded-lg transition-colors ${dragging ? 'bg-primary/5 ring-2 ring-primary/40 ring-inset' : ''}`}
         onDragOver={e => { if (!profileMissing) { e.preventDefault(); setDragging(true) } }}
         onDragLeave={e => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false) }}
         onDrop={e => {
@@ -196,101 +280,40 @@ export default function CustomerDocuments({
           <div className="border border-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-md p-3 text-xs text-amber-800 dark:text-amber-300">
             Salve o cadastro do cliente acima primeiro pra habilitar o envio de documentos.
           </div>
+        ) : filteredDocuments.length === 0 ? (
+          <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+            {dragging ? 'Solte o arquivo aqui' : initialDocuments.length === 0 ? 'Nenhum arquivo anexado. Arraste um arquivo aqui ou cole com Ctrl+V.' : 'Nenhum arquivo nessa categoria.'}
+          </div>
         ) : (
-          <>
-            {/* Upload control */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <select
-                className="h-9 rounded-md border border-input bg-input/25 px-3 text-sm dark:bg-black/40 dark:border-white/10"
-                value={kind}
-                onChange={e => setKind(e.target.value)}
-                disabled={uploading}
-              >
-                {KIND_OPTIONS.map(k => (
-                  <option key={k} value={k}>
-                    {KIND_LABEL[k]}
-                  </option>
-                ))}
-              </select>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,application/pdf"
-                className="hidden"
-                onChange={e => {
-                  const f = e.target.files?.[0]
-                  if (f) handleFile(f)
-                  if (fileInputRef.current) fileInputRef.current.value = ''
-                }}
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                size="sm"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-3.5 h-3.5 mr-1.5" /> Enviar documento
-                  </>
-                )}
-              </Button>
-              <span className="text-[10px] text-muted-foreground">
-                PNG, JPG, WebP ou PDF — até 10MB · arraste o arquivo ou cole com Ctrl+V
-              </span>
-            </div>
-
-            {/* Grid of documents */}
-            {initialDocuments.length === 0 ? (
-              <div className={`border-2 border-dashed rounded-lg p-8 text-center text-sm transition-colors ${dragging ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}>
-                {dragging ? 'Solte o arquivo aqui' : 'Nenhum documento enviado — arraste um arquivo aqui ou cole com Ctrl+V'}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-3">
-                {initialDocuments.map(doc => {
-                  const isImage = (doc.mime_type || '').startsWith('image/')
-                  const ext = fileExt(doc)
-                  return (
-                    <div key={doc.id} className="w-24 shrink-0 group">
-                      <button
-                        type="button"
-                        onClick={() => openPreview(doc)}
-                        className="w-24 h-24 rounded-lg border bg-muted flex flex-col items-center justify-center gap-1 relative cursor-pointer hover:border-primary/50 hover:bg-muted/70 transition-colors"
-                        title="Clique para ver em tamanho completo"
-                      >
-                        {isImage ? (
-                          <FileImage className="w-8 h-8 text-muted-foreground/50" />
-                        ) : (
-                          <FileText className="w-8 h-8 text-muted-foreground/50" />
-                        )}
-                        <span className="text-[9px] font-bold tracking-wide text-muted-foreground/70 bg-background/80 rounded px-1">
-                          {ext}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setDocToDelete(doc.id) }}
-                          className="absolute top-1 right-1 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive/10 p-0.5 rounded transition-opacity"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </button>
-                      <div className="mt-1 text-center">
-                        <div className="text-[10px] font-medium truncate" title={KIND_LABEL[doc.kind] || doc.kind}>
-                          {KIND_LABEL[doc.kind] || doc.kind}
-                        </div>
-                        <div className="text-[9px] text-muted-foreground truncate">
-                          {fmtSize(doc.file_size_bytes)}
-                        </div>
-                      </div>
+          <div className="rounded-lg border divide-y">
+            {filteredDocuments.map(doc => {
+              const isImage = (doc.mime_type || '').startsWith('image/')
+              const authorName = members?.find(m => m.id === doc.uploaded_by)?.name
+              return (
+                <div key={doc.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 group">
+                  {isImage ? <FileImage className="w-4 h-4 text-muted-foreground shrink-0" /> : <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{doc.file_name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {KIND_LABEL[doc.kind] || doc.kind} · {fileExt(doc)}{doc.file_size_bytes ? ` · ${fmtSize(doc.file_size_bytes)}` : ''} · {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                      {authorName ? ` · ${authorName}` : ''}
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="button" onClick={() => openPreview(doc)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Visualizar">
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => handleDownload(doc)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Baixar">
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setDocToDelete(doc.id)} className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Excluir">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 

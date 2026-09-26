@@ -6,14 +6,12 @@ import PropertyInterestsSection from '@/components/features/properties/PropertyI
 import PropertyVisitsSection from '@/components/features/properties/PropertyVisitsSection'
 import PropertyPreferencesCard from '@/components/features/properties/PropertyPreferencesCard'
 import PropertyMatchSuggestions from '@/components/features/properties/PropertyMatchSuggestions'
-import type { ContatoDeal } from '@/actions/contatos'
 import type { TravelCreditRow } from '@/actions/travel-credits'
 import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
-import { DealCard } from './ContatosViewDetailHelpers'
 
 export function OverviewTab({
   orgSlug, selected, c, isTravel, isRealEstate, properties, members,
-  deals, credits, onShowAllDeals,
+  credits,
 }: {
   orgSlug:            string
   selected:           NonNullable<Selected>
@@ -22,31 +20,10 @@ export function OverviewTab({
   isRealEstate?:      boolean
   properties:         { id: string; title: string; code: string | null }[]
   members:            { id: string; name: string }[]
-  deals:              ContatoDeal[]
   credits:            TravelCreditRow[]
-  onShowAllDeals:     () => void
 }) {
   return (
     <>
-      {/* Negociações (resumo) */}
-      {deals.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Negociações
-            </p>
-            {deals.length > 2 && (
-              <button type="button" className="text-xs text-primary hover:underline" onClick={onShowAllDeals}>
-                ver todas
-              </button>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            {deals.slice(0, 2).map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />)}
-          </div>
-        </div>
-      )}
-
       {/* Créditos de Cancelamento (Viagens) — resumo já vira card na linha
           de topo; aqui só o detalhamento por crédito, quando existir. */}
       {isTravel && credits.length > 0 && (

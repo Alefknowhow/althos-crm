@@ -1,23 +1,85 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import type { ContatoDeal } from '@/actions/contatos'
 import { fmtCurrency, fmtDate, type Selected } from './ContatosViewShared'
 import { DealCard } from './ContatosViewDetailHelpers'
 
-/** Negócios — todas as negociações do contato, vindas do pipeline
- *  (tabela `negocios`), independente do nicho. Mostra a etapa quando a
- *  negociação ainda está em andamento (DealCard já exibe stage_name).
- *  Diferente de Vendas: aqui é o histórico do funil, não o que foi
- *  efetivamente vendido/reservado. */
-export function NegociacoesTab({ deals }: { deals: ContatoDeal[] }) {
-  return deals.length > 0 ? (
-    <div className="space-y-2">
-      {deals.map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />)}
+const DEAL_FILTERS = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'open', label: 'Em aberto' },
+  { key: 'won', label: 'Ganhos' },
+  { key: 'lost', label: 'Perdidos' },
+] as const
+type DealFilter = typeof DEAL_FILTERS[number]['key']
+
+/** Negócios — unifica negociações (pipeline) e vendas. Um negócio "ganho"
+ *  é representado como venda: junto do card do negócio, mostra o registro
+ *  de venda/reserva correspondente (valor, data de fechamento, forma de
+ *  pagamento) quando existir. Diferente da antiga aba Vendas (removida na
+ *  issue #63), aqui não há mais uma aba separada — é tudo negócio. */
+export function NegociacoesTab({
+  deals, members, orgSlug, selected, isTravel,
+}: {
+  deals: ContatoDeal[]
+  members?: { id: string; name: string }[]
+  orgSlug: string
+  selected: NonNullable<Selected>
+  isTravel: boolean
+}) {
+  const [filter, setFilter] = useState<DealFilter>('todos')
+
+  const openCount = deals.filter(d => d.status === 'open').length
+  const openValue = deals.filter(d => d.status === 'open').reduce((a, d) => a + (d.value_cents || 0), 0)
+
+  const filteredDeals = useMemo(
+    () => filter === 'todos' ? deals : deals.filter(d => d.status === filter),
+    [deals, filter],
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{openCount} negócio{openCount === 1 ? '' : 's'} em aberto</span>
+          {openValue > 0 && <> · {fmtCurrency(openValue)}</>}
+        </p>
+        <div className="flex items-center gap-1 p-1 rounded-full bg-muted w-fit">
+          {DEAL_FILTERS.map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={`shrink-0 h-7 px-3 rounded-full text-xs font-semibold transition-colors ${
+                filter === f.key ? 'bg-card shadow-[0_1px_2px_rgba(0,0,0,.08)]' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredDeals.length > 0 ? (
+        <div className="space-y-2">
+          {filteredDeals.map(d => <DealCard key={d.id} d={d} fmtCurrency={fmtCurrency} fmtDate={fmtDate} members={members} />)}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center py-4 rounded-lg bg-card">Nenhum negócio nessa categoria.</p>
+      )}
+
+      {/* Negócio ganho = venda: quando o filtro inclui "Ganhos", mostra o
+          registro de venda/reserva correspondente (valor fechado, forma de
+          pagamento), fonte real desses dados (não vive na tabela `negocios`). */}
+      {(filter === 'todos' || filter === 'won') && (
+        <div>
+          <h3 className="text-sm font-bold mb-2">Vendas realizadas</h3>
+          <ComprasTab orgSlug={orgSlug} selected={selected} isTravel={isTravel} />
+        </div>
+      )}
     </div>
-  ) : (
-    <p className="text-xs text-muted-foreground text-center py-4 rounded-lg bg-card">Nenhuma negociação registrada.</p>
   )
 }
 

@@ -34,23 +34,46 @@ export function ActivityRow({ act, fmtCurrency }: { act: any; fmtCurrency: (v: n
   )
 }
 
-export function DealCard({ d, fmtCurrency, fmtDate }: { d: ContatoDeal; fmtCurrency: (v: number) => string; fmtDate: (v: string | null) => string }) {
+export function DealCard({
+  d, fmtCurrency, fmtDate, members,
+}: {
+  d: ContatoDeal
+  fmtCurrency: (v: number) => string
+  fmtDate: (v: string | null) => string
+  /** Nomes dos responsáveis, pra resolver `assigned_to` sem query extra —
+   *  a listagem de membros já vem carregada pra tela toda. */
+  members?: { id: string; name: string }[]
+}) {
+  const assignedName = d.assigned_to ? members?.find(m => m.id === d.assigned_to)?.name : null
   return (
-    <div className="flex items-center justify-between gap-2 text-sm border rounded-lg px-3 py-2">
-      <div className="min-w-0">
-        <span className={cn(
-          'font-medium',
-          d.status === 'won' && 'text-success',
-          d.status === 'lost' && 'text-muted-foreground',
-        )}>
-          {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}
-        </span>
-        {d.stage_name && <span className="text-muted-foreground"> · {d.stage_name}</span>}
-        <div className="text-xs text-muted-foreground">
-          {fmtDate(d.won_at || d.lost_at || d.created_at)}
+    <div className="text-sm border rounded-lg px-3 py-2.5 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <span className={cn(
+            'font-medium',
+            d.status === 'won' && 'text-success',
+            d.status === 'lost' && 'text-muted-foreground',
+          )}>
+            {d.status === 'won' ? 'Ganho' : d.status === 'lost' ? 'Perdido' : 'Em aberto'}
+          </span>
+          {d.stage_name && <span className="text-muted-foreground"> · {d.stage_name}</span>}
+        </div>
+        <span className="font-semibold tabular-nums shrink-0">{fmtCurrency(d.value_cents || 0)}</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+        <div className="min-w-0">
+          <div className="uppercase tracking-wide font-semibold">Pipeline</div>
+          <div className="truncate text-foreground">{d.pipeline_name || '—'}</div>
+        </div>
+        <div className="min-w-0">
+          <div className="uppercase tracking-wide font-semibold">Responsável</div>
+          <div className="truncate text-foreground">{assignedName || '—'}</div>
+        </div>
+        <div className="min-w-0">
+          <div className="uppercase tracking-wide font-semibold">Última movimentação</div>
+          <div className="truncate text-foreground">{fmtDate(d.updated_at || d.won_at || d.lost_at || d.created_at)}</div>
         </div>
       </div>
-      <span className="font-semibold tabular-nums shrink-0">{fmtCurrency(d.value_cents || 0)}</span>
     </div>
   )
 }
