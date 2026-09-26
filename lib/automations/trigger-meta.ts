@@ -71,6 +71,9 @@ export const TRIGGER_TYPES: TriggerTypeMeta[] = [
   { id: 'trafego.library.approved',          label: 'Criativo Aprovado (Tráfego)',            desc: 'Dispara quando o cliente aprova um criativo',           icon: CheckCircle2, color: '#0d9488', niche: 'trafego' },
   { id: 'trafego.library.change_requested',  label: 'Alteração Solicitada (Tráfego)',         desc: 'Dispara quando o cliente solicita alteração num criativo', icon: FolderOpen, color: '#0d9488', niche: 'trafego' },
   { id: 'trafego.conversion.reported',       label: 'Conversão Validada (Tráfego)',           desc: 'Dispara quando a agência valida uma conversão reportada pelo cliente no Portal', icon: CheckCircle2, color: '#0d9488', niche: 'trafego' },
+
+  // Vertical Agências de Viagem — responsável operacional (issue #15).
+  { id: 'viagens.reserva.backoffice_assigned', label: 'Responsável Operacional Definido (Viagens)', desc: 'Dispara quando o responsável operacional (backoffice) da reserva é definido/alterado', icon: Plane, color: '#0ea5e9', niche: 'viagens' },
 ]
 
 export function triggerMeta(type: string): TriggerTypeMeta {

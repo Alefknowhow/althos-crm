@@ -60,7 +60,7 @@ export async function resumeWaitingGenericAutomation(
     ? (buttonsOwner.config?.buttons || []).findIndex((b: any) => b.value === replyText)
     : -1
 
-  const { resumeWaitingAutomationRun } = await import('@/lib/inngest/automation')
+  const { resumeWaitingAutomationRun } = await import('@/lib/inngest/automation-resume')
   await resumeWaitingAutomationRun(supabase, waitingRun, auto, {
     replyText,
     matchedButtonIndex: matchedButtonIndex === -1 ? null : matchedButtonIndex,

@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { ArrowLeft, Clock, ExternalLink } from 'lucide-react'
 import type { TravelSaleRow } from '@/actions/travel-sales'
+import type { Member } from './TravelSalesViewShared'
 
 // Cabeçalho do editor de venda — título/subtítulo guiados pelo anexo do
 // redesign ("Lisboa" grande + "Cliente: X · Responsável: Y" pequeno). Os
@@ -9,12 +11,15 @@ import type { TravelSaleRow } from '@/actions/travel-sales'
 // da direita, e a barra de abas (Dados da Reserva/Viajantes/Vouchers/
 // Tarefas/Produtos) fica logo abaixo, em TravelSalesViewSaleEditor.tsx.
 export default function TravelSalesViewSaleEditorHeader({
-  orgSlug, s, sellerName, period, onBack, actions,
+  orgSlug, s, sellerName, period, members = [], onChangeSeller, onChangeBackofficeOwner, onBack, actions,
 }: {
   orgSlug: string
   s: TravelSaleRow
   sellerName: string | null
   period: string | null
+  members?: Member[]
+  onChangeSeller?: (userId: string) => void
+  onChangeBackofficeOwner?: (userId: string | null) => void
   onBack: () => void
   actions: React.ReactNode
 }) {
@@ -41,6 +46,30 @@ export default function TravelSalesViewSaleEditorHeader({
             </Link>
           )}
         </div>
+
+        {onChangeSeller && members.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="space-y-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Vendedor</label>
+              <Select value={s.seller_id ?? undefined} onValueChange={onChangeSeller}>
+                <SelectTrigger className="h-7 text-xs w-40"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  {members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Responsável operacional</label>
+              <Select value={s.backoffice_owner_id ?? '__none__'} onValueChange={v => onChangeBackofficeOwner?.(v === '__none__' ? null : v)}>
+                <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sem responsável</SelectItem>
+                  {members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 shrink-0">{actions}</div>

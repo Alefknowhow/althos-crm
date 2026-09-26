@@ -12,6 +12,11 @@ export type TravelSaleRow = {
   contato_id: string | null
   proposal_id: string | null
   created_by: string | null
+  /** Vendedor responsável (issue #15) — não confundir com `operator`
+   *  (operadora de turismo, texto livre). Default = created_by no backfill. */
+  seller_id: string | null
+  /** Responsável operacional/backoffice (issue #15) — opcional. */
+  backoffice_owner_id: string | null
   status: string
   client_name: string | null
   destination: string | null
@@ -67,6 +72,7 @@ const WRITABLE = [
   'included_items', 'vouchers', 'travelers', 'travelers_note',
   'payment_method', 'package_locator', 'air_locator', 'hotel_locator', 'airline_checkin_url',
   'commission_cents', 'retained_commission_cents', 'notes', 'cancellation_policy', 'important_info', 'service_info', 'flights',
+  'seller_id', 'backoffice_owner_id',
 ] as const
 
 export function pick(input: Record<string, any>): Record<string, any> {

@@ -86,6 +86,7 @@ export async function createTravelSale(
       contato_id: contato.id,
       proposal_id: linkedProposalId,
       created_by: user.id,
+      seller_id: user.id,
       status: 'open',
       ...prefill,
       client_name: (contato as any).name || prefill.client_name || null,

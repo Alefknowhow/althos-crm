@@ -208,8 +208,9 @@ export default function TravelSalesView({
               orgSlug={orgSlug}
               sale={selected}
               saving={saving}
-              sellerName={selected.created_by ? sellerName.get(selected.created_by) ?? null : null}
+              sellerName={sellerName.get(selected.seller_id || selected.created_by || '') ?? null}
               leads={leads}
+              members={members}
               onBack={() => setSelectedId(null)}
               onDelete={() => setDeleteId(selected.id)}
               onSave={(patch, generate) => handleSave(selected.id, patch, generate)}

@@ -63,6 +63,20 @@ export async function updateTravelSale(orgSlug: string, id: string, input: Recor
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
 
   const supabase = createClient()
+
+  // Vendedor/backoffice (issue #15): a FK não garante que o membro
+  // escolhido pertence a esta org — valida aqui antes de gravar.
+  for (const key of ['seller_id', 'backoffice_owner_id'] as const) {
+    if (key in input && input[key]) {
+      const { data: membership } = await supabase
+        .from('memberships').select('user_id')
+        .eq('organization_id', org.id).eq('user_id', input[key]).maybeSingle()
+      if (!membership) return { ok: false as const, error: 'O usuário selecionado não pertence a esta organização.' }
+    }
+  }
+
+  const { data: before } = await supabase.from('travel_sales').select('backoffice_owner_id').eq('id', id).eq('organization_id', org.id).maybeSingle()
+
   const { data, error } = await supabase
     .from('travel_sales')
     .update(pick(input))
@@ -73,6 +87,22 @@ export async function updateTravelSale(orgSlug: string, id: string, input: Recor
 
   if (error) return { ok: false as const, error: error.message || 'Erro ao salvar venda' }
   const s = data as TravelSaleRow
+
+  if ('backoffice_owner_id' in input && before && before.backoffice_owner_id !== s.backoffice_owner_id && s.contato_id) {
+    try {
+      await supabase.from('contato_activities').insert({
+        contato_id: s.contato_id,
+        organization_id: org.id,
+        type: 'reserva_backoffice_owner_changed',
+        payload: { sale_id: s.id, backoffice_owner_id: s.backoffice_owner_id, changed_by: user.id },
+      })
+      const { inngest } = await import('@/lib/inngest/client')
+      await inngest.send({
+        name: 'viagens.reserva.backoffice_assigned',
+        data: { orgId: org.id, leadId: s.contato_id, saleId: s.id, backofficeOwnerId: s.backoffice_owner_id },
+      })
+    } catch { /* auditoria/automação best-effort */ }
+  }
 
   // Mesmo sync de saveTravelSaleAndGenerateTasks — precisa acontecer em
   // QUALQUER salvamento (não só ao gerar tarefas), senão editar comissão/

@@ -54,12 +54,14 @@ export function TravelSalesListTable({
           <TableHead className="text-right">Valor</TableHead>
           <TableHead className="hidden md:table-cell">Status</TableHead>
           <TableHead className="hidden lg:table-cell">Responsável</TableHead>
+          <TableHead className="hidden xl:table-cell">Backoffice</TableHead>
           <TableHead className="text-right">Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {sales.map(s => {
-          const seller = s.created_by ? sellerName.get(s.created_by) : null
+          const seller = sellerName.get(s.seller_id || s.created_by || '')
+          const backofficeOwner = s.backoffice_owner_id ? sellerName.get(s.backoffice_owner_id) : null
           const cancelled = s.status === 'cancelled'
           return (
             <TableRow key={s.id} className="cursor-pointer" onClick={() => onOpen(s.id)}>
@@ -105,6 +107,11 @@ export function TravelSalesListTable({
                 {seller ? (
                   <span className="text-xs text-muted-foreground truncate max-w-[110px] block">{seller}</span>
                 ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="hidden xl:table-cell">
+                {backofficeOwner ? (
+                  <span className="text-xs text-muted-foreground truncate max-w-[110px] block">{backofficeOwner}</span>
+                ) : <span className="text-xs text-muted-foreground">Sem responsável</span>}
               </TableCell>
               <TableCell onClick={ev => ev.stopPropagation()}>
                 <div className="flex items-center justify-end gap-1">

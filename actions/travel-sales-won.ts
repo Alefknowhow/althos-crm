@@ -52,6 +52,7 @@ export async function maybeCreateTravelSaleOnWon(
       contato_id: leadId,
       proposal_id: proposal.id,
       created_by: userId,
+      seller_id: userId,
       status: 'open',
       ...saleFields,
     }).select('id').single()

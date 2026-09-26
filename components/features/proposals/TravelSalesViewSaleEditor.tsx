@@ -24,20 +24,21 @@ import {
   Upload, Package, ListTodo, FileText, Users, MoreHorizontal,
   Save, Ban, Wallet, FileBadge, FileSignature, Trash2,
 } from 'lucide-react'
-import { type LeadOption, type Voucher } from './TravelSalesViewShared'
+import { type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
 import TravelSalesViewSaleEditorHeader from './TravelSalesViewSaleEditorHeader'
 import TravelSalesViewSaleEditorDadosTab from './TravelSalesViewSaleEditorDadosTab'
 import TravelSalesViewSaleEditorViajantesTab from './TravelSalesViewSaleEditorViajantesTab'
 import TravelSalesViewSaleEditorVouchersTab from './TravelSalesViewSaleEditorVouchersTab'
 
 export default function SaleEditor({
-  orgSlug, sale, saving, sellerName, leads = [], onSave, onBack, onDelete,
+  orgSlug, sale, saving, sellerName, leads = [], members = [], onSave, onBack, onDelete,
 }: {
   orgSlug: string
   sale: TravelSaleRow
   saving: boolean
   sellerName: string | null
   leads?: LeadOption[]
+  members?: Member[]
   onSave: (patch: Record<string, any>, generate: boolean) => void
   onBack: () => void
   onDelete: () => void
@@ -170,6 +171,7 @@ export default function SaleEditor({
     retained_commission_cents: s.retained_commission_cents,
     notes: s.notes, cancellation_policy: s.cancellation_policy, important_info: s.important_info,
     service_info: s.service_info, flights,
+    seller_id: s.seller_id, backoffice_owner_id: s.backoffice_owner_id,
   })
 
   function handleSaveClick() { onSave(patch(), false) }
@@ -186,6 +188,9 @@ export default function SaleEditor({
       <div className="shrink-0 bg-card">
         <TravelSalesViewSaleEditorHeader
           orgSlug={orgSlug} s={s} sellerName={sellerName} period={period}
+          members={members}
+          onChangeSeller={v => set('seller_id', v)}
+          onChangeBackofficeOwner={v => set('backoffice_owner_id', v)}
           onBack={onBack}
           actions={(
             <>
