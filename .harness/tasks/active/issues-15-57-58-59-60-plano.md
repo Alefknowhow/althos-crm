@@ -258,8 +258,11 @@ A.1 · A.2 · A.3 · (fecha #15) · B.1 · B.2 · B.3 · B.4 · B.5 · B.6 · (f
 | Passo | Status | Commit | Notas |
 |---|---|---|---|
 | A (#15) | concluído | `e9fa982` | seller_id/backoffice_owner_id + UI + evento de automação. Issue fechada |
-| B (#60, #59.2) | pendente | | |
-| C (#59.1 + redesign Reserva + ModuleTabs) | pendente | | refs em docs/design-refs/reservas/ |
+| B.1 | concluído | `266de51` | Registry de merge fields (reserva/venda/oportunidade/cliente) |
+| B.2 | concluído | `40a6bd1` | Origem generalizada no NewContractDialog + painel de variáveis |
+| B.3/B.4 (parcial) | concluído | `b17b7b1` | ContractStatusIndicator em Reserva/Venda/Tráfego; timestamps sincronizados; checkpoint 0/0 reconfirmado. Arquivos legados (ContratoManagerDialog/PlanoContrato*) NÃO deletados ainda — ainda têm importadores reais (ClientReportsTab, rota /trafego/[id]/contrato) |
+| B.5–B.7 | pendente | | Reenvio/rejeição/exclusão/cancelamento de contrato, eventos de automação, fechamento do #60 |
+| C (#59.1 + redesign Reserva + ModuleTabs) | pendente | | refs em docs/design-refs/reservas/ — trabalho de UI extenso, pixel-a-pixel |
 | D.1–D.3 | pendente | | |
 | E (#58) | pendente | | |
-| D.4 | pendente | | aguarda QA manual do usuário |
+| D.4 | pendente | | aguarda QA manual do usuário (precisa do número de celular dele em tempo real) |
