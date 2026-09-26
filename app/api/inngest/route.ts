@@ -28,6 +28,7 @@ import { voiceCallRetryFn } from '@/lib/inngest/voice-call-retry'
 import { sendVoiceSmsFn } from '@/lib/inngest/voice-sms'
 import { requestVoiceTranscriptionFn, generateCallInsightsFn } from '@/lib/inngest/voice-intelligence'
 import { reconcileMediaPlanItemsFn } from '@/lib/inngest/trafego-media-plan-reconcile'
+import { trafegoAccountChecksCronFn } from '@/lib/inngest/trafego-account-checks-cron'
 
 // Sem isso, a function serverless usa o teto padrão do plano da Vercel
 // (bem menor que isso) — o backup de storage varre 12 buckets legados
@@ -47,6 +48,7 @@ export const { GET, POST, PUT } = serve({
     processAutomationEventTraffic,
     executeAutomationRun,
     reconcileMediaPlanItemsFn,
+    trafegoAccountChecksCronFn,
     importLeadsCsv,
     qualifyLeadFn,
     pushOverdueTasksFn,
