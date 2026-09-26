@@ -162,6 +162,7 @@ export const processAutomationEventTraffic = inngest.createFunction(
       { event: 'trafego.library.approved' },
       { event: 'trafego.library.change_requested' },
       { event: 'trafego.library.client_uploaded' },
+      { event: 'trafego.conversion.reported' },
     ]
   },
   handleAutomationEvent,

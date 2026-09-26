@@ -11,6 +11,7 @@ import { listAdAccountsForToken, type MetaAdAccountOption } from '@/lib/meta/ads
 import { listAssignableMetaAdAccounts } from '@/actions/marketing'
 import { listTrackingLinksByClient } from '@/actions/tracking-links'
 import { getClientTrackingFunnel, listClientConvertedJourneys, listLinkPerformance, getClientTrackingHealth } from '@/actions/trafego-tracking'
+import { listClientPortalConversions } from '@/actions/portal-conversions-review'
 import { listMediaPlans, getMediaPlanWithItems, type MediaPlanItem } from '@/actions/media-plans'
 import ClientDetailShell from '@/components/features/agencias-trafego/ClientDetailShell'
 import SelectMetaAdAccountsForClient from '@/components/features/agencias-trafego/SelectMetaAdAccountsForClient'
@@ -66,7 +67,7 @@ export default async function TrafficClientDetailPage({
   const now = new Date()
   const range30d = { from: new Date(now.getTime() - 29 * 86_400_000), to: now }
 
-  const [profile, accounts, campaigns, libraryChains, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance, trackingHealth] = await Promise.all([
+  const [profile, accounts, campaigns, libraryChains, { data: sales }, activities, { current, previous }, series, trackingFunnel, trackingJourneys, trackingLinks, trackingLinkPerformance, trackingHealth, portalConversions] = await Promise.all([
     getTrafficClientProfile(params.orgSlug, params.id),
     listAdAccountsByClient(params.orgSlug, params.id),
     listCampaignsByClient(params.orgSlug, params.id),
@@ -85,6 +86,7 @@ export default async function TrafficClientDetailPage({
     listTrackingLinksByClient(params.orgSlug, params.id),
     listLinkPerformance(params.orgSlug, params.id, range30d),
     getClientTrackingHealth(params.orgSlug, params.id),
+    listClientPortalConversions(params.orgSlug, params.id),
   ])
 
   const mediaPlans = await listMediaPlans(params.orgSlug, params.id)
@@ -156,6 +158,7 @@ export default async function TrafficClientDetailPage({
       trackingLinks={trackingLinks}
       trackingLinkPerformance={trackingLinkPerformance}
       trackingHealth={trackingHealth}
+      portalConversions={portalConversions}
       mediaPlans={mediaPlans}
       mediaPlanItems={mediaPlanItems}
       projects={enrichedProjects as any}

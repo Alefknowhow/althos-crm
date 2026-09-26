@@ -8,8 +8,10 @@ import { cn } from '@/lib/utils'
 import TrackingLinksManager from './TrackingLinksManager'
 import ClientFunnelCard from './ClientFunnelCard'
 import TrackingHealthCard from '@/components/features/trafego/TrackingHealthCard'
+import PortalConversionsReviewCard from './PortalConversionsReviewCard'
 import type { TrackingLink } from '@/actions/tracking-links'
 import type { ClientTrackingFunnel, ClientTrackingHealth, ConvertedLead, LinkPerformance } from '@/actions/trafego-tracking'
+import type { ClientPortalConversion } from '@/actions/portal-conversions-review'
 
 /**
  * Aba Tracking — sistema de rastreamento próprio (Fase 1). Funil real
@@ -18,7 +20,7 @@ import type { ClientTrackingFunnel, ClientTrackingHealth, ConvertedLead, LinkPer
  * links e a jornada multi-touch de cada lead convertido.
  */
 export default function ClientTrackingTab({
-  orgSlug, clientId, funnel, journeys, initialLinks, linkPerformance, trackingHealth,
+  orgSlug, clientId, funnel, journeys, initialLinks, linkPerformance, trackingHealth, portalConversions,
 }: {
   orgSlug: string
   clientId: string
@@ -27,12 +29,14 @@ export default function ClientTrackingTab({
   initialLinks: TrackingLink[]
   linkPerformance: LinkPerformance[]
   trackingHealth: ClientTrackingHealth
+  portalConversions: ClientPortalConversion[]
 }) {
   const hasData = funnel.clicks > 0 || initialLinks.length > 0
 
   return (
     <div className="space-y-4">
       <TrackingHealthCard health={trackingHealth} recentFailures={trackingHealth.recentFailures} />
+      <PortalConversionsReviewCard orgSlug={orgSlug} clientId={clientId} initial={portalConversions} />
       <ClientFunnelCard funnel={funnel} hasData={hasData} />
 
       {journeys.length > 0 && (
