@@ -11,6 +11,7 @@ import { generateMediaPlanSuggestion, applyMediaPlanSuggestion, type MediaPlanSu
 import { getAgencyMethod, saveAgencyMethod, type AgencyMethod } from '@/actions/agency-method'
 import { PLATFORM_LABEL } from '@/components/features/agencias-trafego/media-plan-shared'
 import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
+import TrafficAgentChat from '@/components/features/agencias-trafego/TrafficAgentChat'
 
 /**
  * Althos Marketing Strategist — ícone flutuante (canto inferior direito do
@@ -29,6 +30,7 @@ export default function MarketingStrategistDock({
   onApplied: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<'plan' | 'chat'>('plan')
   const [briefing, setBriefing] = useState('')
   const [suggestion, setSuggestion] = useState<MediaPlanSuggestion | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -94,6 +96,28 @@ export default function MarketingStrategistDock({
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><X className="w-4 h-4" /></Button>
             </div>
 
+            <div className="flex items-center gap-1 border-b px-4 py-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMode('plan')}
+                className={cn('px-2.5 py-1 text-xs rounded-sm font-medium transition-colors', mode === 'plan' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary')}
+              >
+                Gerar plano
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('chat')}
+                className={cn('px-2.5 py-1 text-xs rounded-sm font-medium transition-colors', mode === 'chat' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary')}
+              >
+                Conversar com o Traffic Agent
+              </button>
+            </div>
+
+            {mode === 'chat' ? (
+              <div className="flex-1 overflow-hidden p-4">
+                <TrafficAgentChat orgSlug={orgSlug} clientId={contatoId} />
+              </div>
+            ) : (
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <button type="button" onClick={() => setShowMethod(v => !v)} className="text-xs text-muted-foreground underline underline-offset-2">
                 {showMethod ? 'Ocultar' : 'Configurar'} método da agência (aplica a todos os clientes)
@@ -174,6 +198,7 @@ export default function MarketingStrategistDock({
                 </div>
               )}
             </div>
+            )}
           </div>
         </>
       )}
