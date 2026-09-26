@@ -120,6 +120,28 @@ export async function getAutentiqueDocumentStatus(apiKey: string, documentId: st
 }
 
 /**
+ * Cancela/exclui um documento na Autentique (issue #60, B.5) — chamado só
+ * ao cancelar um contrato local que ainda não foi assinado. `deleteDocument`
+ * segue a mesma convenção de nome de `createDocument`, mas **não foi
+ * confirmado contra a documentação oficial** (acesso bloqueado pelo proxy
+ * de rede desta sessão) — por isso todo caller trata a falha como
+ * best-effort (nunca bloqueia o cancelamento local, só registra em
+ * contract_events). Se a Autentique usar outro nome de mutation, isso vai
+ * falhar sempre e aparecer como contract.autentique_cancel_failed no
+ * histórico — sinal pra corrigir o nome aqui.
+ */
+export async function deleteAutentiqueDocument(apiKey: string, documentId: string): Promise<void> {
+  const query = `
+    mutation DeleteDocument($id: UUID!) {
+      deleteDocument(id: $id) {
+        id
+      }
+    }
+  `
+  await graphql(apiKey, query, { id: documentId })
+}
+
+/**
  * A Autentique às vezes inclui na resposta um signatário extra que nunca
  * assinamos explicitamente (ex.: o dono da própria conta/API como
  * aprovador implícito) — cobrar `signatures.every(signed)` trava o

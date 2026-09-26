@@ -6,12 +6,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Loader2, Send, RefreshCw, XCircle, Pencil } from 'lucide-react'
+import { Loader2, Send, RefreshCw, XCircle, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import TiptapEmailEditor from '@/components/features/email/TiptapEmailEditor'
 import { updateContractDraft, cancelContract } from '@/actions/contracts-global'
 import { getContractSaleContext } from '@/actions/contracts-origin'
-import { sendContractForSignature, refreshContractStatus } from '@/actions/contracts-global-signature'
+import { sendContractForSignature, refreshContractStatus, deleteContract } from '@/actions/contracts-global-signature'
 import ContractSignersPanel from './ContractSignersPanel'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -24,8 +24,11 @@ const EVENT_LABEL: Record<string, string> = {
   'contract.created': 'Contrato criado',
   'contract.generated': 'Documento gerado',
   'contract.sent': 'Enviado para assinatura',
+  'contract.viewed': 'Visualizado pelo signatário',
   'contract.signed': 'Assinado',
+  'contract.rejected': 'Recusado pelo signatário',
   'contract.cancelled': 'Cancelado',
+  'contract.autentique_cancel_failed': 'Falha ao cancelar na Autentique (cancelado localmente)',
 }
 
 export default function ContractDetailView({ orgSlug, contract }: { orgSlug: string; contract: any }) {
@@ -35,6 +38,7 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [saleContext, setSaleContext] = useState<Awaited<ReturnType<typeof getContractSaleContext>> | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
@@ -55,6 +59,11 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
     : !hasSigners ? 'Adicione pelo menos 1 signatário abaixo antes de enviar.'
     : null
   const canCheck = !!contract.autentique_document_id && contract.status !== 'signed' && contract.status !== 'cancelled'
+  // Excluir só se nunca chegou a sair do rascunho local (nunca enviado à
+  // Autentique); depois de enviado, o caminho é cancelar. Assinado é
+  // registro legal — nem uma coisa nem outra (decisão do usuário, #60 B.5).
+  const canDelete = (contract.status === 'draft' || contract.status === 'ready') && !contract.autentique_document_id
+  const canCancel = !canDelete && contract.status !== 'signed' && contract.status !== 'cancelled'
 
   function reload() {
     router.refresh()
@@ -75,6 +84,16 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
     if (!res.ok) { toast.error(res.error); return }
     toast.success('Contrato cancelado')
     reload()
+  }
+
+  async function handleDelete() {
+    if (!confirm('Excluir este contrato? Essa ação não pode ser desfeita.')) return
+    setDeleting(true)
+    const res = await deleteContract(orgSlug, contract.id)
+    setDeleting(false)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Contrato excluído')
+    router.push(`/app/${orgSlug}/contratos`)
   }
 
   /** Converte o body_html renderizado num PDF (html2canvas + jsPDF — mesmo
@@ -157,9 +176,15 @@ export default function ContractDetailView({ orgSlug, contract }: { orgSlug: str
             Verificar status
           </Button>
         )}
-        {contract.status !== 'signed' && contract.status !== 'cancelled' && (
+        {canCancel && (
           <Button type="button" size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleCancel}>
             <XCircle className="w-4 h-4 mr-1.5" /> Cancelar contrato
+          </Button>
+        )}
+        {canDelete && (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1.5" />}
+            Excluir contrato
           </Button>
         )}
       </div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs } from '@/components/ui/tabs'
+import { ModuleTabsList, ModuleTabsTrigger } from '@/components/design/ModuleTabs'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
@@ -20,7 +21,7 @@ import { TabsContent } from '@/components/ui/tabs'
 import { bulkCreateSaleProductsFromExtraction } from '@/actions/sale-products'
 import { extractedToSaleFieldsPatch, extractedTravelers } from '@/lib/travel-sales/apply-extraction'
 import {
-  Upload, Package, ListTodo, FileText, Users, MoreHorizontal,
+  MoreHorizontal,
   Save, Ban, Wallet, FileBadge, Trash2,
 } from 'lucide-react'
 import { type LeadOption, type Member, type Voucher } from './TravelSalesViewShared'
@@ -230,15 +231,18 @@ export default function SaleEditor({
           )}
         />
 
-        {/* Dados da Reserva / Viajantes / Vouchers / Tarefas / Produtos — abas no topo, cada uma gerida de forma isolada. */}
+        {/* Dados da Reserva / Produtos / Viajantes / Vouchers / Tarefas —
+            ordem e componente do padrão global de abas internas de módulo
+            (issue #60 Fase C.1/C.2). Tarefas não está na referência do
+            usuário, então fica por último. */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4">
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="dados"><FileText className="w-3.5 h-3.5 mr-1.5" /> Dados da reserva</TabsTrigger>
-            <TabsTrigger value="viajantes"><Users className="w-3.5 h-3.5 mr-1.5" /> Viajantes {travelers.length > 0 && travelers.length}</TabsTrigger>
-            <TabsTrigger value="vouchers"><Upload className="w-3.5 h-3.5 mr-1.5" /> Vouchers</TabsTrigger>
-            <TabsTrigger value="tarefas"><ListTodo className="w-3.5 h-3.5 mr-1.5" /> Tarefas</TabsTrigger>
-            <TabsTrigger value="produtos"><Package className="w-3.5 h-3.5 mr-1.5" /> Produtos</TabsTrigger>
-          </TabsList>
+          <ModuleTabsList className="flex-wrap h-auto">
+            <ModuleTabsTrigger value="dados">Dados da reserva</ModuleTabsTrigger>
+            <ModuleTabsTrigger value="produtos">Produtos</ModuleTabsTrigger>
+            <ModuleTabsTrigger value="viajantes">Viajantes{travelers.length > 0 ? ` ${travelers.length}` : ''}</ModuleTabsTrigger>
+            <ModuleTabsTrigger value="vouchers">Vouchers</ModuleTabsTrigger>
+            <ModuleTabsTrigger value="tarefas">Tarefas</ModuleTabsTrigger>
+          </ModuleTabsList>
         </Tabs>
       </div>
 
@@ -250,19 +254,14 @@ export default function SaleEditor({
             operatorOptions={operatorOptions} onExtracted={handleVoucherExtracted}
           />
 
-          <TravelSalesViewSaleEditorViajantesTab
-            orgSlug={orgSlug} travelers={travelers} leads={leads} set={set}
-          />
-
           {/* ── Produtos ────────────────────────────────────────── */}
           <TabsContent value="produtos" className="pt-4">
             <SaleProductsTab orgSlug={orgSlug} saleId={s.id} refreshKey={productsRefreshKey} />
           </TabsContent>
 
-          {/* ── Tarefas ─────────────────────────────────────────── */}
-          <TabsContent value="tarefas" className="pt-4">
-            <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
-          </TabsContent>
+          <TravelSalesViewSaleEditorViajantesTab
+            orgSlug={orgSlug} travelers={travelers} leads={leads} set={set}
+          />
 
           <TravelSalesViewSaleEditorVouchersTab
             orgSlug={orgSlug} s={s} setS={setS} set={set} vouchers={vouchers}
@@ -271,6 +270,11 @@ export default function SaleEditor({
             extractLabel={extractLabel} mergeExtractedFields={mergeExtractedFields}
             setProductsRefreshKey={setProductsRefreshKey}
           />
+
+          {/* ── Tarefas ─────────────────────────────────────────── */}
+          <TabsContent value="tarefas" className="pt-4">
+            <SaleTasksList orgSlug={orgSlug} saleId={s.id} clientId={s.contato_id} clientName={s.client_name} />
+          </TabsContent>
         </Tabs>
       </div>
 

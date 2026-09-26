@@ -207,7 +207,7 @@ export default function ProposalsList({
                 return (
                   <TableRow
                     key={p.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-[52px] hover:bg-muted/30"
                     onClick={() => router.push(`/app/${orgSlug}/cotacoes/${p.id}`)}
                   >
                     <TableCell className="max-w-[220px]">

@@ -163,10 +163,34 @@ export async function updateContractDraft(orgSlug: string, id: string, input: {
   return { ok: true as const }
 }
 
+/** Cancela um contrato enviado (mas ainda não assinado) — decisão do
+ *  usuário (issue #60, B.5): assinado é registro legal, nunca pode ser
+ *  cancelado/excluído; a UI esconde as duas ações e aqui é a garantia
+ *  server-side. Se houver documento na Autentique, tenta cancelar/remover
+ *  lá também — best-effort, nunca bloqueia o cancelamento local. */
 export async function cancelContract(orgSlug: string, id: string) {
   const { org, perm } = await requireContractsAccess(orgSlug)
   if (!perm.allowed) return { ok: false as const, error: perm.reason }
   const supabase = createClient()
+
+  const { data: contract } = await supabase
+    .from('contracts').select('id, status, autentique_document_id')
+    .eq('id', id).eq('organization_id', org.id).maybeSingle()
+  if (!contract) return { ok: false as const, error: 'Contrato não encontrado.' }
+  if (contract.status === 'signed') return { ok: false as const, error: 'Contrato assinado não pode ser cancelado — é um registro legal.' }
+  if (contract.status === 'cancelled') return { ok: true as const }
+
+  if (contract.autentique_document_id) {
+    try {
+      const { data: org2 } = await supabase.from('organizations').select('autentique_api_key').eq('id', org.id).maybeSingle()
+      if (org2?.autentique_api_key) {
+        const { deleteAutentiqueDocument } = await import('@/lib/autentique')
+        await deleteAutentiqueDocument(org2.autentique_api_key, contract.autentique_document_id)
+      }
+    } catch (e: any) {
+      await logEvent(supabase, org.id, id, 'contract.autentique_cancel_failed', { error: e?.message || 'erro desconhecido' })
+    }
+  }
 
   const { error } = await supabase
     .from('contracts')
