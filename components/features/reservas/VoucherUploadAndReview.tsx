@@ -15,10 +15,13 @@ type Voucher = { url: string; name: string }
  * mesma ação em dois lugares da tela.
  */
 export default function VoucherUploadAndReview({
-  orgSlug, onVoucherAdded,
+  orgSlug, onVoucherAdded, compact = false,
 }: {
   orgSlug: string
   onVoucherAdded: (v: Voucher) => void
+  /** Botão discreto (só "+ Add voucher"), sem o cartão tracejado grande —
+   *  usado quando a lista de vouchers já dá contexto suficiente. */
+  compact?: boolean
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -37,16 +40,32 @@ export default function VoucherUploadAndReview({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  const input = (
+    <input
+      ref={fileRef}
+      type="file"
+      multiple
+      accept="application/pdf,image/*"
+      className="hidden"
+      onChange={e => handleFiles(e.target.files)}
+    />
+  )
+
+  if (compact) {
+    return (
+      <>
+        {input}
+        <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+          {uploading ? 'Enviando…' : '+ Add voucher'}
+        </Button>
+      </>
+    )
+  }
+
   return (
     <div className="rounded-lg border-2 border-dashed p-4 text-center space-y-2">
-      <input
-        ref={fileRef}
-        type="file"
-        multiple
-        accept="application/pdf,image/*"
-        className="hidden"
-        onChange={e => handleFiles(e.target.files)}
-      />
+      {input}
       <Upload className="w-5 h-5 mx-auto text-muted-foreground" />
       <p className="text-sm font-medium">Adicionar voucher</p>
       <p className="text-xs text-muted-foreground">PDF, JPG ou PNG — aceita mais de um arquivo por reserva.</p>

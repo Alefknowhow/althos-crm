@@ -8,16 +8,21 @@
 import { cn } from '@/lib/utils'
 
 export default function ModuleSection({
-  title, children, className, contentClassName,
+  title, children, className, contentClassName, headerExtra,
 }: {
   title: string
   children: React.ReactNode
   className?: string
   contentClassName?: string
+  /** Conteúdo à direita do título — ex.: um botão discreto de ação da seção. */
+  headerExtra?: React.ReactNode
 }) {
   return (
     <div className={cn('rounded-2xl border bg-card p-4 space-y-3', className)}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+        {headerExtra}
+      </div>
       <div className={contentClassName}>{children}</div>
     </div>
   )
