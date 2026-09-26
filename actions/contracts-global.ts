@@ -81,6 +81,15 @@ export async function createContract(orgSlug: string, input: {
   if (!input.title?.trim()) return { ok: false as const, error: 'Informe um título para o contrato.' }
   const supabase = createClient()
 
+  // Mesclagem automática (issue #60, B.1): campos vindos explicitamente em
+  // fieldValues têm precedência sobre os resolvidos da origem.
+  let fieldValues = input.fieldValues || {}
+  if (input.relatedEntityType && input.relatedEntityId) {
+    const { resolveMergeFields } = await import('@/lib/contracts/merge-fields')
+    const resolved = await resolveMergeFields(supabase, org.id, input.relatedEntityType, input.relatedEntityId)
+    fieldValues = { ...resolved, ...fieldValues }
+  }
+
   let bodyHtml: string | null = null
   if (input.templateId) {
     const { data: template } = await supabase
@@ -91,7 +100,7 @@ export async function createContract(orgSlug: string, input: {
       .maybeSingle()
     if (template) {
       const { renderTemplate } = await import('@/lib/inngest/functions')
-      bodyHtml = renderTemplate(template.body_html || '', input.fieldValues || {})
+      bodyHtml = renderTemplate(template.body_html || '', fieldValues)
     }
   }
 
@@ -104,7 +113,7 @@ export async function createContract(orgSlug: string, input: {
       related_entity_id: input.relatedEntityId || null,
       template_id: input.templateId || null,
       body_html: bodyHtml,
-      field_values: input.fieldValues || {},
+      field_values: fieldValues,
       value_cents: input.valueCents ?? null,
       created_by: user.id,
     })
