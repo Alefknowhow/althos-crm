@@ -2,10 +2,11 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Circle, Pencil, Trash2, Plane, Hotel, Car, Ship, ShieldCheck, Ticket, MapPinned, Package } from 'lucide-react'
+import { CheckCircle2, Circle, Pencil, Trash2 } from 'lucide-react'
 import type { SaleProduct, SaleProductKind } from '@/actions/sale-products'
 import { cityFromAirportCode } from '@/lib/airports'
 import { cn } from '@/lib/utils'
+import { PRODUCT_KIND_META } from '@/lib/travel/product-types'
 
 // Mesmos rótulos usados no formulário (SaleProductDedicatedForms.tsx) —
 // duplicado aqui só pra exibição, sem acoplar os dois arquivos.
@@ -14,18 +15,6 @@ const CABIN_LABEL: Record<string, string> = {
 }
 const BAGGAGE_LABEL: Record<string, string> = {
   item_pessoal: 'Item pessoal', mao: 'Bagagem de mão', despachada: 'Bagagem despachada',
-}
-
-const KIND_META: Record<SaleProductKind, { icon: any; label: string }> = {
-  aereo: { icon: Plane, label: 'Aéreo' },
-  hospedagem: { icon: Hotel, label: 'Hospedagem' },
-  transfer: { icon: Car, label: 'Transfer' },
-  passeio: { icon: MapPinned, label: 'Passeio' },
-  cruzeiro: { icon: Ship, label: 'Cruzeiro' },
-  seguro: { icon: ShieldCheck, label: 'Seguro' },
-  ingresso: { icon: Ticket, label: 'Ingresso' },
-  veiculo: { icon: Car, label: 'Locação de veículo' },
-  outro: { icon: Package, label: 'Outro' },
 }
 
 function fmtDate(d: string | null | undefined): string {
@@ -99,7 +88,7 @@ function summaryLines(kind: SaleProductKind, data: Record<string, any>): { title
       }
     default:
       return {
-        title: data.nome || KIND_META[kind]?.label || kind,
+        title: data.nome || PRODUCT_KIND_META[kind]?.label || kind,
         lines: [data.fornecedor || null, data.data ? fmtDate(data.data) : null, data.localizador ? `Localizador: ${data.localizador}` : null].filter(Boolean) as string[],
       }
   }
@@ -188,7 +177,7 @@ export default function SaleProductCard({
    *  fora do editor de Reservas, como o painel de detalhe de Embarques. */
   readOnly?: boolean
 }) {
-  const meta = KIND_META[product.kind] || KIND_META.outro
+  const meta = PRODUCT_KIND_META[product.kind] || PRODUCT_KIND_META.outro
   const Icon = meta.icon
   const data = product.data || {}
   const { title, lines } = summaryLines(product.kind, data)
@@ -196,15 +185,13 @@ export default function SaleProductCard({
   const legs = product.kind === 'aereo' && Array.isArray(data.legs) ? data.legs : null
 
   return (
-    <div className="rounded-lg border p-3 flex items-start gap-3">
-      <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-primary" />
+    <div className="rounded-xl bg-muted/50 p-3 flex items-start gap-3">
+      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: meta.color }}>
+        <Icon className="w-4 h-4 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{meta.label}</Badge>
-        </div>
-        <div className="text-sm font-medium mt-1 truncate">{title}</div>
+        <div className="text-sm font-semibold truncate">{meta.label}</div>
+        <div className="text-sm mt-0.5 truncate">{title}</div>
         {lines.map((l, i) => (
           <div key={i} className="text-xs text-muted-foreground truncate">{l}</div>
         ))}

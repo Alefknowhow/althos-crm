@@ -10,7 +10,6 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -22,6 +21,7 @@ import {
 } from '@/actions/sale-products'
 import SaleProductCard from '@/components/features/reservas/SaleProductCard'
 import SaleProductInlineForm from '@/components/features/reservas/SaleProductInlineForm'
+import ModuleSection from '@/components/design/ModuleSection'
 
 export default function SaleProductsTab({
   orgSlug, saleId, refreshKey,
@@ -65,61 +65,59 @@ export default function SaleProductsTab({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          Produtos da venda
-        </p>
-        {editingId === null && (
-          <Button type="button" size="sm" variant="outline" onClick={() => setEditingId('new')}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar produto
-          </Button>
+      <ModuleSection title="Produtos" contentClassName="space-y-2">
+        {editingId === 'new' && (
+          <SaleProductInlineForm
+            orgSlug={orgSlug}
+            saleId={saleId}
+            product={null}
+            onClose={() => setEditingId(null)}
+            onSaved={() => { setEditingId(null); reload() }}
+          />
         )}
-      </div>
 
-      {editingId === 'new' && (
-        <SaleProductInlineForm
-          orgSlug={orgSlug}
-          saleId={saleId}
-          product={null}
-          onClose={() => setEditingId(null)}
-          onSaved={() => { setEditingId(null); reload() }}
-        />
-      )}
-
-      {products.length === 0 && editingId === null ? (
-        <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
-          <Package className="w-6 h-6 mx-auto text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Nenhum produto adicionado.</p>
-          <p className="text-xs text-muted-foreground">Envie o voucher na aba Documentos para preencher automaticamente, ou adicione manualmente.</p>
-          <Button type="button" size="sm" variant="outline" onClick={() => setEditingId('new')}>
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Adicionar produto
-          </Button>
-        </div>
-      ) : (
-        // Scroll próprio quando a lista crescer — issue #11 §3: "permitir
-        // scroll quando a quantidade/conteúdo exigir".
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
-          {products.map(p => (
-            <div key={p.id} className="space-y-2">
-              <SaleProductCard
-                product={p}
-                onEdit={() => setEditingId(editingId === p.id ? null : p.id)}
-                onDelete={() => setDeleteTarget(p.id)}
-                onToggleStatus={() => handleToggleStatus(p)}
-              />
-              {editingProduct?.id === p.id && (
-                <SaleProductInlineForm
-                  orgSlug={orgSlug}
-                  saleId={saleId}
-                  product={editingProduct}
-                  onClose={() => setEditingId(null)}
-                  onSaved={() => { setEditingId(null); reload() }}
+        {products.length === 0 && editingId === null ? (
+          <div className="rounded-xl bg-muted/30 p-6 text-center space-y-2">
+            <Package className="w-6 h-6 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Nenhum produto adicionado.</p>
+            <p className="text-xs text-muted-foreground">Envie o voucher na aba Vouchers para preencher automaticamente, ou adicione manualmente.</p>
+          </div>
+        ) : (
+          // Scroll próprio quando a lista crescer — issue #11 §3: "permitir
+          // scroll quando a quantidade/conteúdo exigir".
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
+            {products.map(p => (
+              <div key={p.id} className="space-y-2">
+                <SaleProductCard
+                  product={p}
+                  onEdit={() => setEditingId(editingId === p.id ? null : p.id)}
+                  onDelete={() => setDeleteTarget(p.id)}
+                  onToggleStatus={() => handleToggleStatus(p)}
                 />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                {editingProduct?.id === p.id && (
+                  <SaleProductInlineForm
+                    orgSlug={orgSlug}
+                    saleId={saleId}
+                    product={editingProduct}
+                    onClose={() => setEditingId(null)}
+                    onSaved={() => { setEditingId(null); reload() }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {editingId === null && (
+          <button
+            type="button"
+            onClick={() => setEditingId('new')}
+            className="w-full rounded-xl border border-dashed py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" /> Adicionar produto
+          </button>
+        )}
+      </ModuleSection>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={o => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

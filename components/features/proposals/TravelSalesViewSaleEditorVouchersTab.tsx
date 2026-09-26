@@ -5,6 +5,7 @@ import VoucherUploadAndReview from '@/components/features/reservas/VoucherUpload
 import VoucherExtractDialog, { type ExtractSource } from '@/components/features/reservas/VoucherExtractDialog'
 import { updateTravelSale, type TravelSaleRow } from '@/actions/travel-sales'
 import type { Voucher } from './TravelSalesViewShared'
+import ModuleSection from '@/components/design/ModuleSection'
 
 // Conteúdo da aba "Vouchers" do editor de venda — extraído de
 // TravelSalesViewSaleEditor.tsx. Pura movimentação de JSX.
@@ -44,18 +45,17 @@ export default function TravelSalesViewSaleEditorVouchersTab({
           />
         </div>
         <div className="lg:col-span-3">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Vouchers / comprovantes</p>
-          {vouchers.length > 0 ? (
-            <ul className="space-y-1.5">
-              {vouchers.map((v, i) => {
+          <ModuleSection title="Vouchers" contentClassName="space-y-1.5">
+            {vouchers.length > 0 ? (
+              vouchers.map((v, i) => {
                 const isPdf = /\.pdf($|\?)/i.test(v.url) || /\.pdf$/i.test(v.name)
                 return (
-                  <li key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-1.5">
+                  <div key={`${v.url}-${i}`} className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
                     {isPdf
                       ? <FileIcon className="w-4 h-4 text-rose-500 shrink-0" />
                       : <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />}
                     <a href={v.url} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 min-w-0 truncate text-xs text-foreground hover:underline">
+                      className="flex-1 min-w-0 truncate text-sm font-medium text-foreground hover:underline">
                       {v.name || `Voucher ${i + 1}`}
                     </a>
                     <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">Importado pelo agente</span>
@@ -77,13 +77,13 @@ export default function TravelSalesViewSaleEditorVouchersTab({
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
-                  </li>
+                  </div>
                 )
-              })}
-            </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground border rounded-lg p-4 text-center">Nenhum voucher enviado ainda.</p>
-          )}
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground rounded-xl bg-muted/30 p-4 text-center">Nenhum voucher enviado ainda.</p>
+            )}
+          </ModuleSection>
         </div>
       </div>
 
