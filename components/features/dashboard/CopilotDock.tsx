@@ -4,8 +4,7 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Send, X, Loader2, Plus, PanelLeft, Mic, Square } from 'lucide-react'
+import { X, Plus, PanelLeft } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { getCopilotInit } from '@/actions/copilot'
 import { pinCardToDashboard } from '@/actions/dashboard-layout'
@@ -13,9 +12,9 @@ import {
   listInsightsSessions, createInsightsSession, deleteInsightsSession, renameInsightsSession, listInsightsMessages,
 } from '@/actions/ai_insights'
 import { useCopilot } from '@/components/features/CopilotProvider'
+import { AIComposer } from '@/components/features/ai/AIComposer'
 import { CopilotDockSidebar } from './CopilotDockSidebar'
 import { CopilotDockMessages } from './CopilotDockMessages'
-import { useCopilotAudioRecording } from './useCopilotAudioRecording'
 
 type ToolCall = { name: string; input: Record<string, any>; result: { summary: string; view: any } }
 type Message = { id: string; role: 'user' | 'assistant' | 'system'; content: string; tool_calls: ToolCall[] | null }
@@ -44,10 +43,6 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
   const [, startTransition] = useTransition()
   const router = useRouter()
   const endRef = useRef<HTMLDivElement>(null)
-  const { recording, transcribing, startRecording, stopRecording } = useCopilotAudioRecording(
-    orgSlug,
-    text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text)),
-  )
 
   useEffect(() => {
     if (!open || initialized) return
@@ -205,11 +200,6 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    send(input)
-  }
-
   return (
     <>
       {open && (
@@ -277,33 +267,18 @@ export default function CopilotDock({ orgSlug, period }: { orgSlug: string; peri
 
               {enabled && (
                 <div className="shrink-0 px-6 sm:px-8 pb-6 pt-2">
-                  <form
-                    onSubmit={handleSubmit}
-                    className="max-w-[720px] mx-auto flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 px-2 py-2 transition-colors"
-                  >
-                    <Input
+                  <div className="max-w-[720px] mx-auto">
+                    <AIComposer
+                      orgSlug={orgSlug}
                       value={input}
-                      onChange={e => setInput(e.target.value)}
-                      placeholder={recording ? 'Gravando...' : transcribing ? 'Transcrevendo áudio...' : 'Pergunte sobre seu negócio...'}
-                      disabled={streaming || !sessionId || recording || transcribing}
-                      className="flex-1 h-9 text-[15px] border-none bg-transparent shadow-none focus-visible:ring-0"
+                      onChange={setInput}
+                      onSend={() => send(input)}
+                      disabled={streaming || !sessionId}
+                      sending={streaming}
+                      placeholder="Pergunte sobre seu negócio..."
+                      autoFocus
                     />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant={recording ? 'destructive' : 'ghost'}
-                      disabled={streaming || !sessionId || transcribing}
-                      onClick={recording ? stopRecording : startRecording}
-                      title={recording ? 'Parar gravação' : 'Gravar áudio'}
-                      aria-label={recording ? 'Parar gravação' : 'Gravar áudio'}
-                      className="h-9 w-9 shrink-0 rounded-xl"
-                    >
-                      {transcribing ? <Loader2 className="w-4 h-4 animate-spin" /> : recording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    </Button>
-                    <Button type="submit" size="icon" disabled={streaming || !input.trim() || recording || transcribing} className="h-9 w-9 shrink-0 rounded-xl">
-                      {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    </Button>
-                  </form>
+                  </div>
                 </div>
               )}
             </div>

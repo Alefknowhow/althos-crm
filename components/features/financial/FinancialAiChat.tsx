@@ -4,10 +4,12 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Coins, Send, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
+import { Coins, X, User as UserIcon, Loader2, Check, Ban } from 'lucide-react'
 import { getFinancialAiInit, confirmFinancialAiEntry } from '@/actions/financial-ai'
+import { AIComposer } from '@/components/features/ai/AIComposer'
+import { AIEmptyState } from '@/components/features/ai/AIEmptyState'
+import { renderMarkdownLite } from '@/components/features/ai/markdownLite'
 
 type FinancialAiView =
   | { type: 'kpis'; items: Array<{ label: string; value: string }> }
@@ -23,13 +25,6 @@ const SUGGESTED_PROMPTS = [
   'Onde estou gastando mais?',
   'O que vence essa semana?',
 ]
-
-function renderMarkdownLite(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) =>
-    /^\*\*[^*]+\*\*$/.test(part) ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>,
-  )
-}
 
 function ViewCard({ view, orgSlug }: { view: FinancialAiView; orgSlug: string }) {
   const router = useRouter()
@@ -201,11 +196,6 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    send(input)
-  }
-
   return (
     <>
       {!open && (
@@ -245,17 +235,11 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
               </div>
             ) : messages.length === 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Pergunte sobre o financeiro ou peça pra registrar um lançamento:</p>
-                {SUGGESTED_PROMPTS.map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => send(p)}
-                    className="w-full text-left text-xs border rounded-lg px-3 py-2.5 hover:bg-muted hover:border-primary/40 transition-all"
-                  >
-                    {p}
-                  </button>
-                ))}
+                <AIEmptyState
+                  description="Pergunte sobre o financeiro ou peça pra registrar um lançamento:"
+                  suggestions={SUGGESTED_PROMPTS}
+                  onSelectSuggestion={send}
+                />
                 <Badge variant="outline" className="text-[10px]">A IA nunca grava dados sem sua confirmação</Badge>
               </div>
             ) : (
@@ -302,18 +286,17 @@ export default function FinancialAiChat({ orgSlug }: { orgSlug: string }) {
           </div>
 
           {enabled && (
-            <form onSubmit={handleSubmit} className="border-t bg-card p-3 flex gap-2 shrink-0">
-              <Input
+            <div className="border-t bg-card p-3 shrink-0">
+              <AIComposer
+                orgSlug={orgSlug}
                 value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Pergunte ou peça pra lançar algo..."
+                onChange={setInput}
+                onSend={() => send(input)}
                 disabled={streaming || !sessionId}
-                className="flex-1 h-10 text-sm"
+                sending={streaming}
+                placeholder="Pergunte ou peça pra lançar algo..."
               />
-              <Button type="submit" size="icon" disabled={streaming || !input.trim()} className="h-10 w-10 shrink-0">
-                {streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </form>
+            </div>
           )}
         </div>
       )}

@@ -4,8 +4,6 @@ import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -13,10 +11,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
   Bot,
-  Send,
   Sparkles,
   AlertTriangle,
-  Loader2,
   PanelLeft,
 } from 'lucide-react'
 import {
@@ -26,7 +22,7 @@ import {
 } from '@/actions/ai_attendant'
 import { SandboxPlaygroundSidebar } from './SandboxPlaygroundSidebar'
 import { SandboxPlaygroundMessages } from './SandboxPlaygroundMessages'
-import { VoiceInputButton } from '@/components/features/ai/VoiceInputButton'
+import { AIComposer } from '@/components/features/ai/AIComposer'
 
 type Message = {
   id: string
@@ -233,29 +229,16 @@ export default function SandboxPlayground({
         />
 
         <div className="border-t bg-card p-4">
-          <form
-            onSubmit={e => {
-              e.preventDefault()
-              send()
-            }}
-            className="relative flex gap-2"
-          >
-            <Input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Digite como se fosse um cliente..."
-              disabled={sending || !activeSessionId}
-              autoFocus
-            />
-            <VoiceInputButton
-              orgSlug={orgSlug}
-              onTranscribed={text => setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text))}
-              disabled={sending || !activeSessionId}
-            />
-            <Button type="submit" disabled={sending || !input.trim() || !activeSessionId}>
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
-          </form>
+          <AIComposer
+            orgSlug={orgSlug}
+            value={input}
+            onChange={setInput}
+            onSend={send}
+            disabled={sending || !activeSessionId}
+            sending={sending}
+            placeholder="Digite como se fosse um cliente..."
+            autoFocus
+          />
         </div>
       </main>
 
