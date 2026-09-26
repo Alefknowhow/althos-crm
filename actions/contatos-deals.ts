@@ -49,10 +49,13 @@ export type ContatoDeal = {
   id: string
   status: 'open' | 'won' | 'lost'
   stage_name: string | null
+  pipeline_name: string | null
   value_cents: number | null
+  assigned_to: string | null
   won_at: string | null
   lost_at: string | null
   created_at: string
+  updated_at: string | null
 }
 
 /** Histórico completo de negócios do contato (fonte: tabela `negocios`). */
@@ -64,7 +67,7 @@ export async function listContatoDeals(orgSlug: string, contatoId: string): Prom
   const supabase = createClient()
   const { data } = await supabase
     .from('negocios')
-    .select('id, status, value_cents, won_at, lost_at, created_at, pipeline_stages(name)')
+    .select('id, status, value_cents, assigned_to, won_at, lost_at, created_at, updated_at, pipeline_stages(name), pipelines(name)')
     .eq('contato_id', contatoId)
     .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
@@ -72,10 +75,13 @@ export async function listContatoDeals(orgSlug: string, contatoId: string): Prom
     id: d.id,
     status: d.status,
     stage_name: d.pipeline_stages?.name ?? null,
+    pipeline_name: d.pipelines?.name ?? null,
     value_cents: d.value_cents,
+    assigned_to: d.assigned_to ?? null,
     won_at: d.won_at,
     lost_at: d.lost_at,
     created_at: d.created_at,
+    updated_at: d.updated_at ?? null,
   }))
 }
 

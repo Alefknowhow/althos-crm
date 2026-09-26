@@ -264,7 +264,7 @@ export async function getContatoPanel(orgSlug: string, contatoId: string) {
       .maybeSingle(),
     supabase
       .from('contato_documents')
-      .select('id, kind, file_path, file_name, file_size_bytes, mime_type, created_at')
+      .select('id, kind, file_path, file_name, file_size_bytes, mime_type, uploaded_by, created_at')
       .eq('contato_id', contatoId)
       .eq('organization_id', org.id)
       .order('created_at', { ascending: false }),
