@@ -29,6 +29,16 @@ export async function POST(req: Request) {
 
   const eventType = body?.event?.type as string | undefined
   const documentId = body?.event?.data?.document as string | undefined
+  // Nome de campo do e-mail/signatário no payload não é confirmado contra a
+  // documentação oficial (acesso bloqueado) — tenta as variações mais
+  // comuns; se nenhuma bater, o handler ainda atualiza o contrato como um
+  // todo via consulta ao status do documento.
+  const signerEmail = (body?.event?.data?.email || body?.event?.data?.signer?.email) as string | undefined
+
+  if ((eventType === 'viewed' || eventType === 'signature.rejected') && documentId) {
+    const supabase = createAdminClient()
+    await handleGlobalContractEvent(supabase, documentId, eventType, signerEmail)
+  }
 
   if (eventType === 'signature.accepted' && documentId) {
     const supabase = createAdminClient()
@@ -88,6 +98,45 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true })
+}
+
+// Trata `viewed`/`signature.rejected` da Autentique pro módulo global de
+// Contratos (issue #60, B.5) — só atualiza status/timestamp do signatário
+// (e do contrato como um todo, se rejeitado); não mexe em sale_contracts.
+async function handleGlobalContractEvent(
+  supabase: ReturnType<typeof createAdminClient>,
+  documentId: string,
+  eventType: 'viewed' | 'signature.rejected',
+  signerEmail: string | undefined,
+) {
+  const { data: contract } = await supabase
+    .from('contracts')
+    .select('id, organization_id, status')
+    .eq('autentique_document_id', documentId)
+    .maybeSingle()
+  if (!contract || contract.status === 'signed' || contract.status === 'cancelled') return
+
+  const now = new Date().toISOString()
+
+  if (eventType === 'viewed') {
+    const update: Record<string, any> = { viewed_at: now }
+    let query = supabase.from('contract_signers').update(update).eq('contract_id', contract.id).eq('status', 'sent')
+    if (signerEmail) query = query.eq('email', signerEmail)
+    await query
+    if (contract.status === 'sent') {
+      await supabase.from('contracts').update({ status: 'viewed' }).eq('id', contract.id)
+    }
+    await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.viewed', payload: signerEmail ? { email: signerEmail } : {} })
+    return
+  }
+
+  // signature.rejected
+  const signerUpdate: Record<string, any> = { status: 'rejected', rejected_at: now }
+  let query = supabase.from('contract_signers').update(signerUpdate).eq('contract_id', contract.id)
+  if (signerEmail) query = query.eq('email', signerEmail)
+  await query
+  await supabase.from('contracts').update({ status: 'rejected' }).eq('id', contract.id)
+  await supabase.from('contract_events').insert({ organization_id: contract.organization_id, contract_id: contract.id, type: 'contract.rejected', payload: signerEmail ? { email: signerEmail } : {} })
 }
 
 async function handleGlobalContractSigned(supabase: ReturnType<typeof createAdminClient>, documentId: string) {

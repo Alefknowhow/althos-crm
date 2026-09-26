@@ -13,14 +13,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Plus, X, User } from 'lucide-react'
+import { Plus, X, User, Mail, MessageCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { searchLeads } from '@/actions/contatos-bulk'
 import { addContractSigner, removeContractSigner } from '@/actions/contracts-global'
+import { sendGlobalContractLinkByEmail, sendGlobalContractLinkByWhatsapp } from '@/actions/contracts-global-signature'
 
 const STATUS_CLS: Record<string, string> = {
   pending: 'bg-muted text-muted-foreground',
   sent: 'bg-amber-100 text-amber-700',
+  viewed: 'bg-blue-100 text-blue-700',
   signed: 'bg-success text-success-foreground',
   rejected: 'bg-destructive text-destructive-foreground',
 }
@@ -30,11 +32,12 @@ export default function ContractSignersPanel({
 }: {
   orgSlug: string
   contractId: string
-  signers: { id: string; name: string; email: string | null; phone: string | null; status: string }[]
+  signers: { id: string; name: string; email: string | null; phone: string | null; status: string; signature_link?: string | null }[]
   editable: boolean
   onChange: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [resendingId, setResendingId] = useState<string | null>(null)
   const [mode, setMode] = useState<'search' | 'manual'>('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{ id: string; name: string; email: string | null; phone: string | null }[]>([])
@@ -73,6 +76,22 @@ export default function ContractSignersPanel({
     const res = await removeContractSigner(orgSlug, id)
     if (!res.ok) { toast.error(res.error); return }
     onChange()
+  }
+
+  async function handleResendEmail(signerId: string) {
+    setResendingId(signerId)
+    const res = await sendGlobalContractLinkByEmail(orgSlug, signerId)
+    setResendingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Link reenviado por e-mail')
+  }
+
+  async function handleResendWhatsapp(signerId: string) {
+    setResendingId(signerId)
+    const res = await sendGlobalContractLinkByWhatsapp(orgSlug, signerId)
+    setResendingId(null)
+    if (!res.ok) { toast.error(res.error); return }
+    toast.success('Link reenviado por WhatsApp')
   }
 
   return (
@@ -129,6 +148,26 @@ export default function ContractSignersPanel({
                 <p className="text-xs text-muted-foreground truncate">{s.email || s.phone || 'sem contato'}</p>
               </div>
               <Badge className={cn('text-[10px] shrink-0', STATUS_CLS[s.status])}>{s.status}</Badge>
+              {!!s.signature_link && (s.status === 'sent' || s.status === 'viewed' || s.status === 'rejected') && (
+                <>
+                  {resendingId === s.id ? (
+                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      {s.email && (
+                        <button type="button" onClick={() => handleResendEmail(s.id)} className="text-muted-foreground hover:text-primary shrink-0" aria-label="Reenviar por e-mail" title="Reenviar por e-mail">
+                          <Mail className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {s.phone && (
+                        <button type="button" onClick={() => handleResendWhatsapp(s.id)} className="text-muted-foreground hover:text-primary shrink-0" aria-label="Reenviar por WhatsApp" title="Reenviar por WhatsApp">
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
               {editable && (
                 <button type="button" onClick={() => handleRemove(s.id)} className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Remover signatário">
                   <X className="w-3.5 h-3.5" />
